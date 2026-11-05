@@ -2605,6 +2605,7 @@
             "pieces": [],
             "hoverExpand": true,
             "hoverDelay": 300,
+            "externalDashboard": [],
             "pageWidth": 440,
             "navItems": [
                 "media",
