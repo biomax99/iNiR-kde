@@ -298,7 +298,19 @@ QtObject {
         const id = String(appId ?? "")
         const entry = AppSearch.lookupDesktopEntry(id)
         const icon = entry?.icon || AppSearch.guessIcon(id)
-        return IconThemeService.smartIconName(icon, id)
+        // A dock icon theme (appearance.dockIconTheme) draws every app it knows, so the Dock reads as one set.
+        const themed = IconThemeService.dockThemedIcon(root.iconNames(id, entry, icon))
+        return themed.length > 0 ? themed : IconThemeService.smartIconName(icon, id)
+    }
+    // What a theme may call an app: its icon name, desktop id, app id and window class, then its icon file's own
+    // name and the app's name ("Claude (Work)" is "claude").
+    function iconNames(id: string, entry: var, icon: string): var {
+        const named = String(icon ?? "")
+        const file = named.startsWith("/") || named.startsWith("file://")
+        const name = String(entry?.name ?? "")
+        return [file ? "" : named, String(entry?.id ?? "").replace(/\.desktop$/, ""), id, String(entry?.startupClass ?? ""),
+            file ? named.replace(/^.*\//, "").replace(/\.[a-z0-9]+$/i, "") : "",
+            name.replace(/\s+/g, "-"), name.replace(/\s*\(.*\)\s*/g, "").replace(/\s+/g, "-")]
     }
     function appEntry(appId: string): var { return root.apps.find(entry => entry && entry.appId === appId) ?? null }
     function appPieceIds(): var {

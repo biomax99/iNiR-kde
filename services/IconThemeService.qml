@@ -21,6 +21,53 @@ Singleton {
     property bool _initialized: false
     property bool _restartQueued: false
 
+    // The dock theme's app icons by lowercase name, as file URLs: lets a dock wear one theme even for apps whose
+    // desktop entry points at an icon file of its own. A "-dark"/"-light" variant is read before the theme it varies.
+    readonly property string dockIndexTheme: String(Config.options?.appearance?.dockIconTheme ?? "").trim()
+    property var dockIndex: ({})
+    onDockIndexThemeChanged: root.indexDockTheme()
+    Component.onCompleted: root.indexDockTheme()
+    function indexDockTheme(): void {
+        dockIndexProc.running = false
+        dockIndexProc.lines = []
+        root.dockIndex = ({})
+        if (root.dockIndexTheme.length > 0) dockIndexProc.running = true
+    }
+    // The first of `names` the dock theme draws, or "".
+    function dockThemedIcon(names: var): string {
+        for (const name of names ?? []) {
+            const key = String(name ?? "").toLowerCase()
+            if (key.length > 0 && root.dockIndex[key]) return root.dockIndex[key]
+        }
+        return ""
+    }
+    Process {
+        id: dockIndexProc
+        property var lines: []
+        command: ["/usr/bin/bash", "-c", `
+            theme="$1"; base="\${theme%-dark}"; base="\${base%-light}"
+            for name in "$theme" "$base"; do
+                for dir in "$HOME/.local/share/icons/$name" "/usr/share/icons/$name"; do
+                    [ -d "$dir" ] || continue
+                    find -L "$dir" -path '*/apps*/scalable/*' -name '*.svg' -printf '%f\t%p\n' 2>/dev/null
+                    find -L "$dir" -path '*/apps*/256*/*' -name '*.png' -printf '%f\t%p\n' 2>/dev/null
+                done
+            done`, "_", root.dockIndexTheme]
+        stdout: SplitParser { onRead: line => dockIndexProc.lines.push(line) }
+        onExited: {
+            const index = {}
+            for (const line of dockIndexProc.lines) {
+                const tab = line.indexOf("\t")
+                if (tab <= 0) continue
+                const key = line.slice(0, tab).replace(/\.(svg|png)$/i, "").toLowerCase()
+                if (!(key in index)) index[key] = "file://" + line.slice(tab + 1)
+            }
+            dockIndexProc.lines = []
+            root.dockIndex = index
+            root._log("[IconThemeService] Dock theme", root.dockIndexTheme, "draws", Object.keys(index).length, "app icons")
+        }
+    }
+
     // The mode is known only once the colours load (it starts dark): pick the sibling again then and on every switch,
     // or a light scheme keeps the dark variant's white icons.
     readonly property bool _dark: Appearance.m3colors.darkmode
