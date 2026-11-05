@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Window
 import org.kde.kirigami as Kirigami
 import Quickshell
 import qs.modules.common
@@ -55,8 +56,9 @@ Item {
         id: imageKind
         Image {
             source: root.resolvedSource
-            sourceSize.width: root.iconSize
-            sourceSize.height: root.iconSize
+            // Rasterize at device pixels, or fractional scaling upscales a blurry bitmap.
+            sourceSize.width: Math.ceil(root.iconSize * Screen.devicePixelRatio)
+            sourceSize.height: Math.ceil(root.iconSize * Screen.devicePixelRatio)
             fillMode: Image.PreserveAspectFit
             smooth: true
             mipmap: true

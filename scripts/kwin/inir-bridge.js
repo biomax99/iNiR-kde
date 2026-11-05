@@ -20,6 +20,13 @@ var polling = false;
 var pollAt = 0;
 var removed = {};
 var watched = {};
+var cursorScreen = "";
+
+// The output under the pointer: what "the active screen" means to the shell.
+function screenUnderCursor() {
+    var screen = workspace.screenAt ? workspace.screenAt(workspace.cursorPos) : null;
+    return screen ? String(screen.name) : "";
+}
 
 function uuidOf(w) {
     return String(w.internalId);
@@ -94,6 +101,7 @@ function snapshot() {
     return {
         active: tracked(active) ? uuidOf(active) : "",
         activeScreen: activeScreen ? String(activeScreen.name) : "",
+        cursorScreen: cursorScreen,
         current: workspace.currentDesktop ? String(workspace.currentDesktop.id) : "",
         desktops: desktops,
         screens: screens,
@@ -251,6 +259,14 @@ workspace.desktopsChanged.connect(changed);
 workspace.screensChanged.connect(changed);
 if (workspace.activeScreenChanged) workspace.activeScreenChanged.connect(changed);
 if (workspace.desktopLayoutChanged) workspace.desktopLayoutChanged.connect(changed);
+// Pushed only when the pointer crosses to another output, not on every move.
+if (workspace.cursorPosChanged) workspace.cursorPosChanged.connect(function () {
+    var name = screenUnderCursor();
+    if (name === cursorScreen) return;
+    cursorScreen = name;
+    changed();
+});
+cursorScreen = screenUnderCursor();
 
 var initial = workspace.windowList();
 for (var i = 0; i < initial.length; i++)

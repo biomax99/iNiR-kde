@@ -274,6 +274,10 @@ class Bridge:
     def focused_output(self):
         state = self.state or {}
         screens = [s["name"] for s in state.get("screens") or []]
+        # The pointer decides, as KWin's own ActiveMouseScreen does; the
+        # active window's output only matters when the cursor is unknown.
+        if state.get("cursorScreen") in screens:
+            return state["cursorScreen"]
         active = state.get("active")
         for window in state.get("windows") or []:
             if window["uuid"] == active and window["output"] in screens:
