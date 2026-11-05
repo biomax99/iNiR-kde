@@ -256,6 +256,47 @@ Item {
     }
     function closeMenu(): void { window.menuApp = null }
 
+    function motionOf(intent: string): var {
+        const spring = IrisStyle.springFor(intent, "")
+        return { duration: IrisStyle.durationOf(spring), curve: IrisStyle.curveOf(spring) }
+    }
+    // The Dock's body where it rests when shown, in screen coordinates, and the motion it moves by: what another
+    // shell's launcher grows out of. A hidden Dock gives the place it shows at; a notch reaches the edge it melts into.
+    function restBody(): var {
+        const gap = window.edgeGap
+        const attached = root.notch && IrisFrame.band > 0 ? IrisFrame.band : 0
+        const w = dock.width + (root.vertical ? attached : 0)
+        const h = dock.height + (root.vertical ? 0 : attached)
+        const x = root.vertical ? (root.atLeft ? gap - attached : window.width - dock.width - gap) : Math.round((window.width - w) / 2)
+        const y = root.vertical ? Math.round((window.height - h) / 2) : (root.atTop ? gap - attached : window.height - dock.height - gap)
+        return { x: Math.round(x), y: Math.round(y + window.screenOffsetY), width: Math.round(w), height: Math.round(h),
+            radius: dock.radius, openRadius: IrisStyle.surfaceRadius("menus", IrisStyle.radiusSheet),
+            color: String(IrisStyle.surface), edge: root.edge,
+            emerge: root.motionOf("emerge"), recede: root.motionOf("recede"),
+            rise: IrisStyle.morph?.rise ?? 0.3, span: IrisStyle.morph?.span ?? 0.35 }
+    }
+    // The Applications button: Spotlight, or the launcher iris.dock.externalLauncher names, grown out of the Dock.
+    function openLauncher(output: string, body: var): void {
+        const command = root.options?.externalLauncher ?? []
+        if (command.length === 0) {
+            GlobalStates.searchOpen = !GlobalStates.searchOpen
+            return
+        }
+        nameLabel.present(null, "")
+        window.menuApp = null
+        Quickshell.execDetached([...command, "toggle", output, JSON.stringify(body)])
+    }
+    // KWin: the shortcuts iris.dock.launcherShortcuts names open the launcher on the output under the pointer.
+    Connections {
+        target: NiriService
+        enabled: (root.options?.launcherShortcuts ?? []).length > 0
+        function onKwinShortcutPressed(component: string, action: string): void {
+            if (!(root.options?.launcherShortcuts ?? []).includes(component + "/" + action)) return
+            if ((GlobalStates.focusedScreen?.name ?? "") !== (root.screen?.name ?? "")) return
+            root.openLauncher(root.screen?.name ?? "", root.restBody())
+        }
+    }
+
     Item {
             id: window
             property var menuApp: null
@@ -611,7 +652,7 @@ Item {
                                     GlobalStates.irisEditTarget = "dock"
                                     return
                                 }
-                                GlobalStates.searchOpen = !GlobalStates.searchOpen
+                                root.openLauncher(root.screen?.name ?? "", root.restBody())
                             }
                             onContainsMouseChanged: nameLabel.present(containsMouse ? launcherSlot : null, Translation.tr("Applications"))
                             Item {

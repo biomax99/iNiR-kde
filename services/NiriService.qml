@@ -105,6 +105,8 @@ Singleton {
     // send() would put on the socket.
     readonly property bool kwinBridgeWanted: CompositorService.isKWin
     property bool kwinBridgeReady: false
+    // A KWin global shortcut was pressed (any component's, as kglobalaccel announces it).
+    signal kwinShortcutPressed(string component, string action)
     property int _kwinRestartDelayMs: 1000
     readonly property var _kwinActions: ["FocusWorkspace", "FocusWorkspaceUp", "FocusWorkspaceDown",
         "FocusWindow", "CloseWindow", "MoveWindowToWorkspace", "ToggleOverview", "OpenOverview"]
@@ -161,6 +163,10 @@ Singleton {
         if (event.KWinReady !== undefined) {
             root.kwinBridgeReady = true
             root._kwinRestartDelayMs = 1000
+            return
+        }
+        if (event.KWinShortcut !== undefined) {
+            root.kwinShortcutPressed(String(event.KWinShortcut.component ?? ""), String(event.KWinShortcut.action ?? ""))
             return
         }
         handleNiriEvent(event)

@@ -10,6 +10,9 @@ for its own lifetime and translates between the two sides:
 - stdin takes Niri IPC requests ({"Action": {...}}), {"op": "sync"} or
   {"op": "setMinimized", "id": <window id>, "value": bool}; they are
   translated to KWin terms and handed to the script through a long-poll (Next).
+- Global shortcut presses KWin's kglobalaccel announces on the bus leave as
+  {"KWinShortcut": {"component": ..., "action": ...}}: the shell can follow a
+  shortcut the session already has without registering one of its own.
 
 Run with --selftest to load the script, print one snapshot summary and exit.
 """
@@ -55,6 +58,7 @@ class Bridge:
         self.loop = GLib.MainLoop()
         self.conn = Gio.bus_get_sync(Gio.BusType.SESSION, None)
         self.registration = 0
+        self.shortcut_watch = 0
         self.owns_name = False
         self.script_loaded = False
         self.kwin_owner = ""
@@ -96,6 +100,16 @@ class Bridge:
     def register(self):
         node = Gio.DBusNodeInfo.new_for_xml(INTROSPECTION)
         self.registration = self.conn.register_object(OBJECT_PATH, node.interfaces[0], self.on_method, None, None)
+
+    def watch_shortcuts(self):
+        self.shortcut_watch = self.conn.signal_subscribe(
+            "org.kde.kglobalaccel", "org.kde.kglobalaccel.Component", "globalShortcutPressed",
+            None, None, Gio.DBusSignalFlags.NONE, self.on_shortcut)
+
+    def on_shortcut(self, _conn, _sender, _path, _interface, _signal, params):
+        component, action = params.unpack()[:2]
+        if self.ready:
+            self.emit({"KWinShortcut": {"component": component, "action": action}})
 
     def refresh_kwin_owner(self):
         try:
@@ -444,6 +458,9 @@ class Bridge:
             self.release_pending()
         except GLib.Error:
             pass
+        if self.shortcut_watch:
+            self.conn.signal_unsubscribe(self.shortcut_watch)
+            self.shortcut_watch = 0
         if self.registration:
             self.conn.unregister_object(self.registration)
             self.registration = 0
@@ -461,6 +478,7 @@ class Bridge:
             return 1
         try:
             self.register()
+            self.watch_shortcuts()
             self.refresh_kwin_owner()
             for signum in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
                 signal_add(GLib.PRIORITY_HIGH, signum, lambda *_: (self.quit(0), GLib.SOURCE_REMOVE)[1])

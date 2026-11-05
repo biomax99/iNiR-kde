@@ -3984,6 +3984,12 @@ Singleton {
                     property int magnifySize: 150 // hovered icon at its largest, % of its size
                     property bool badges: true // Unread notification counts on app icons
                     property bool launcher: true // Applications button at the start of the Dock
+                    // A command that opens another shell's launcher in place of Spotlight. It gets "toggle", the output
+                    // name and the Dock's resting body and motion as JSON, to grow out of the Dock.
+                    property list<string> externalLauncher: []
+                    // KWin: global shortcuts ("component/action") that open the launcher on the output under the pointer.
+                    // Followed as kglobalaccel announces them, never registered.
+                    property list<string> launcherShortcuts: []
                     property bool reorder: true
                     property string arrange: "pinned" // "pinned" (pinned apps keep their place while open) or "opened" (open apps together, in the order opened)
                     property bool revealOnEmpty: true // Auto-hide keeps the dock shown on an empty workspace
