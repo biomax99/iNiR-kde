@@ -42,6 +42,7 @@ main() {
       failed=1
       continue
     fi
+    target_manifest_enabled "$TARGETS_DIR/$target_id.json" || continue
 
     COLOR_MODULE_ID="$target_id" log_module "running target via $(basename "$module_path")"
     if ! COLOR_MODULE_ID="$target_id" bash "$module_path"; then

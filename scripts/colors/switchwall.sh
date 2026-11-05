@@ -42,8 +42,10 @@ _config_locked_write() {
 pre_process() {
     local mode_flag="$1"
 
-    # Set GNOME color-scheme if mode_flag is dark or light
-    if [[ "$mode_flag" == "dark" ]]; then
+    # Set GNOME color-scheme if mode_flag is dark or light (GTK theming belongs to enableQtApps, as in apply-gtk-theme.sh)
+    if [[ "${cfg_enable_qt_apps:-true}" == "false" ]]; then
+        :
+    elif [[ "$mode_flag" == "dark" ]]; then
         gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'
         gsettings set org.gnome.desktop.interface gtk-theme 'adw-gtk3-dark'
     elif [[ "$mode_flag" == "light" ]]; then
@@ -592,6 +594,10 @@ switch() {
     [[ "$cfg_soften_colors" == "true" ]] && generate_colors_material_args+=(--soften)
     [[ "$cfg_color_invert" == "true" ]] && generate_colors_material_args+=(--invert-hue)
 
+    # Templates (matugen templates.json) write into app configs, so they follow app theming.
+    local render_templates_args=()
+    [[ "$enable_apps_shell" != "false" ]] && render_templates_args=(--render-templates "$TEMPLATE_DIR")
+
     # Generate colors and render templates in one unified Python pass
     if [[ -n "${INIR_VENV:-}" ]]; then
         _ii_venv="$(eval echo "$INIR_VENV")"
@@ -625,7 +631,7 @@ switch() {
         --terminal-output "$_terminal_tmp" \
         --meta-output "$_meta_tmp" \
         --scss-output "$_scss_tmp" \
-        --render-templates "$TEMPLATE_DIR" \
+        "${render_templates_args[@]}" \
         > /dev/null 2>/dev/null && [[ -s "$_json_tmp" ]]; then
         mv "$_json_tmp" "$_json_out"
         [[ -s "$_palette_tmp" ]] && mv "$_palette_tmp" "$_palette_out" || rm -f "$_palette_tmp"
@@ -717,12 +723,12 @@ main() {
             (.background.thumbnailPath // ""),
             (.appearance.wallpaperTheming.useBackdropForColors // false),
             (.panelFamily // "ii"),
-            (.waffles.background.backdrop.useMainWallpaper // true),
+            (.waffles.background.backdrop.useMainWallpaper | if . == null then true else . end),
             (.waffles.background.backdrop.wallpaperPath // ""),
-            (.background.backdrop.useMainWallpaper // true),
+            (.background.backdrop.useMainWallpaper | if . == null then true else . end),
             (.background.backdrop.wallpaperPath // ""),
-            (.appearance.wallpaperTheming.enableAppsAndShell // true),
-            (.appearance.wallpaperTheming.enableTerminal // true),
+            (.appearance.wallpaperTheming.enableAppsAndShell | if . == null then true else . end),
+            (.appearance.wallpaperTheming.enableTerminal | if . == null then true else . end),
             (.appearance.wallpaperTheming.terminalColorAdjustments.saturation // 0.65),
             (.appearance.wallpaperTheming.terminalColorAdjustments.brightness // 0.60),
             (.appearance.wallpaperTheming.terminalColorAdjustments.harmony // .appearance.wallpaperTheming.terminalGenerationProps.harmony // 0.40),
@@ -732,13 +738,14 @@ main() {
             (.appearance.wallpaperTheming.terminalGenerationProps.termFgBoost // 0.35),
             (.appearance.softenColors | tostring),
             (.appearance.wallpaperTheming.terminalGenerationProps.forceDarkMode // false),
-            (.appearance.wallpaperTheming.enableVesktop // true),
+            (.appearance.wallpaperTheming.enableVesktop | if . == null then true else . end),
             (.background.hideUpscaleNotification // false),
             (if .appearance.customTheme.darkmode == null then true else .appearance.customTheme.darkmode end),
             (.appearance.wallpaperTheming.autoDarkLightMode // false),
             (.appearance.colorInvert // false),
             (.iris.appearance.scheme // "auto"),
-            (.iris.appearance.materialForApps // true)
+            (.iris.appearance.materialForApps | if . == null then true else . end),
+            (.appearance.wallpaperTheming.enableQtApps | if . == null then true else . end)
         ] | .[]' "$SHELL_CONFIG_FILE" 2>/dev/null)
     fi
     cfg_palette_type="${_cfg[0]:-auto}"
@@ -770,6 +777,7 @@ main() {
     cfg_color_invert="${_cfg[26]:-false}"
     cfg_iris_scheme="${_cfg[27]:-auto}"
     cfg_iris_material_apps="${_cfg[28]:-true}"
+    cfg_enable_qt_apps="${_cfg[29]:-true}"
 
     set_accent_color() {
         local color="$1"

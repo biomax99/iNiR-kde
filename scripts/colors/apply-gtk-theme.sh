@@ -35,8 +35,8 @@ SHELL_CONFIG_FILE="$(inir_config_file)"
 enable_apps_shell="true"
 enable_qt_apps="true"
 if [[ -f "$SHELL_CONFIG_FILE" ]] && command -v jq &>/dev/null; then
-    enable_apps_shell=$(jq -r '.appearance.wallpaperTheming.enableAppsAndShell // true' "$SHELL_CONFIG_FILE")
-    enable_qt_apps=$(jq -r '.appearance.wallpaperTheming.enableQtApps // true' "$SHELL_CONFIG_FILE")
+    enable_apps_shell=$(jq -r '.appearance.wallpaperTheming.enableAppsAndShell | if . == null then true else . end' "$SHELL_CONFIG_FILE")
+    enable_qt_apps=$(jq -r '.appearance.wallpaperTheming.enableQtApps | if . == null then true else . end' "$SHELL_CONFIG_FILE")
 fi
 
 # Exit only when both shell/GTK and Qt app theming are disabled

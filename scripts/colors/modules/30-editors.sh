@@ -72,7 +72,9 @@ apply_code_editors() {
   if [[ "$enable_neovim" == 'true' ]] && [[ -d "$NEOVIM_CONFIG_DIR" || -x "$(command -v nvim 2>/dev/null)" ]]; then
     generate_neovim_spec "$colors_file"
   else
-    strip_neovim_spec
+    if [[ "$(config_bool '.appearance.wallpaperTheming.stripEditorThemesWhenDisabled' true)" == 'true' ]]; then
+      strip_neovim_spec
+    fi
   fi
 
   if [[ "$enable_vscode" == 'true' ]]; then
@@ -84,7 +86,7 @@ apply_code_editors() {
 
       _check_vscode_fork() {
         local jq_key="$1" fork_key="$2" config_dir="$3"
-        if [[ $(echo "$editors_config" | jq -r ".$jq_key // true") == 'true' ]] && [[ -d "$config_dir" ]]; then
+        if [[ $(echo "$editors_config" | jq -r ".$jq_key | if . == null then true else . end") == 'true' ]] && [[ -d "$config_dir" ]]; then
           enabled_forks+=("$fork_key")
         elif [[ -d "$config_dir" ]]; then
           disabled_forks+=("$fork_key")
@@ -122,7 +124,7 @@ apply_code_editors() {
     fi
 
     # Strip theme from individually disabled forks
-    if [[ ${#disabled_forks[@]} -gt 0 ]]; then
+    if [[ ${#disabled_forks[@]} -gt 0 ]] && [[ "$(config_bool '.appearance.wallpaperTheming.stripEditorThemesWhenDisabled' true)" == 'true' ]]; then
       if ensure_vscode_themegen; then
         local strip_cmd=("$VSCODE_THEMEGEN_BIN" "--strip")
         for fork in "${disabled_forks[@]}"; do
@@ -133,7 +135,7 @@ apply_code_editors() {
         "$python_cmd" "$SCRIPT_DIR/vscode/theme_generator.py" --strip --forks "${disabled_forks[@]}" >> "$STATE_DIR/user/generated/code_editor_themes.log" 2>&1 || true
       fi
     fi
-  else
+  elif [[ "$(config_bool '.appearance.wallpaperTheming.stripEditorThemesWhenDisabled' true)" == 'true' ]]; then
     # VSCode theming globally disabled — strip all installed forks
     if ensure_vscode_themegen; then
       "$VSCODE_THEMEGEN_BIN" --strip >> "$STATE_DIR/user/generated/code_editor_themes.log" 2>&1 || true

@@ -64,13 +64,15 @@ Singleton {
     }
 
     property bool _traysConflict: false
+    // In a Plasma session kded6 is part of the desktop, not a stray tray daemon: killing it breaks Plasma.
+    readonly property bool _kdeSession: (Quickshell.env("XDG_CURRENT_DESKTOP") ?? "").split(":").includes("KDE")
     property bool _notifsConflict: false
 
     Process {
         id: pidofTraysProc
         command: ["/usr/bin/pidof", "kded6"]
         onExited: (exitCode, exitStatus) => {
-            root._traysConflict = (exitCode === 0)
+            root._traysConflict = (exitCode === 0) && !root._kdeSession
             root._maybeHandleConflicts()
         }
     }

@@ -1083,6 +1083,7 @@ Singleton {
                     property bool enableOpenCode: false
                     property bool enableNeovim: false
                     property bool enableCava: true
+                    property bool stripEditorThemesWhenDisabled: true // Remove colour customizations from editors whose theming is off (rewrites their settings.json)
                     property real colorStrength: 1.0
                     property JsonObject vscodeEditors: JsonObject {
                         property bool code: true           // Official VSCode
@@ -1163,6 +1164,7 @@ Singleton {
                 }
                 property string iconTheme: "WhiteSur-dark" // System icon theme (tray, GTK/Qt apps)
                 property string dockIconTheme: "" // Dock icon theme (overrides system for dock only)
+                property bool iconThemeSystemSync: true // Push iconTheme to gsettings, kdeglobals, qt5ct/qt6ct and GTK settings.ini; off leaves the system theme alone
                 property real shellScale: 1.0 // Legacy compatibility key. Launcher keeps QT_SCALE_FACTOR=1; use appearance.typography.sizeScale.
                 property string iiMotionProfile: "contextual" // "classic" | "contextual"
                 property JsonObject desaturation: JsonObject {

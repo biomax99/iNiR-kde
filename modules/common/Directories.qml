@@ -93,7 +93,7 @@ Singleton {
     property string booruDownloads: Config.options?.sidebar?.booru?.downloadPath?.sfw || Directories.wallpapersPath
     property string booruDownloadsNsfw: Config.options?.sidebar?.booru?.downloadPath?.nsfw || `${Directories.wallpapersPath}/🌶️`
     property string latexOutput: `${Directories.cachePath}/media/latex`
-    property string shellConfig: `${Directories.configPath}/illogical-impulse`
+    property string shellConfig: `${Directories.configPath}/inir`
     property string shellConfigName: "config.json"
     property string shellConfigPath: `${Directories.shellConfig}/${Directories.shellConfigName}`
     property string updateLogPath: `${Directories.stateUserPath}/update.log`

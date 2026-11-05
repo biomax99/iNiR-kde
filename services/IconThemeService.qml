@@ -158,6 +158,9 @@ Singleton {
     // `currentTheme` is the family the user chose; the system gets its sibling for the scheme's mode
     // (WhiteSur-dark on a light scheme draws white icons), the same pick apply-gtk-theme.sh makes.
     function _apply(themeName: string, skipRestart: bool): void {
+        // With system sync off (e.g. a Plasma session that owns the theme) nothing outside the shell is touched.
+        if (!(Config.options?.appearance?.iconThemeSystemSync ?? true))
+            return;
         variantProc.themeName = themeName
         variantProc.skipRestart = skipRestart
         variantProc.running = false
