@@ -157,7 +157,7 @@ Singleton {
         let appId = ""
         let appName = ""
 
-        if (CompositorService.isNiri) {
+        if (CompositorService.hasNiriModel) {
             // The initial WindowsChanged snapshot already marks the focused
             // window, but NiriService.activeWindow is event-driven and can stay
             // null until the next focus change. Use the reactive list as the

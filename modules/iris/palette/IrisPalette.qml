@@ -155,7 +155,7 @@ Item {
                 verb: windows.length > 0 ? Translation.tr("Switch to") : Translation.tr("Open"),
                 execute: () => {
                     const focused = windows.find(window => window.activated) ?? windows[0]
-                    if (focused && CompositorService.isNiri && focused.niriWindowId !== undefined)
+                    if (focused && CompositorService.hasNiriModel && focused.niriWindowId !== undefined)
                         NiriService.focusWindow(focused.niriWindowId)
                     else if (focused) focused.activate()
                     else if (entry) AppSearch.launchEntry(entry)

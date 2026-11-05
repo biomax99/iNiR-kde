@@ -707,7 +707,7 @@ Scope {
 
                 readonly property bool islandAutoHide: IrisFrame.islandAutoHide && islandLoader.active
                 readonly property bool islandWorkspaceEmpty: {
-                    if (!(root.options?.revealOnEmpty ?? true) || !CompositorService.isNiri) return false
+                    if (!(root.options?.revealOnEmpty ?? true) || !CompositorService.hasNiriModel) return false
                     const active = (NiriService.allWorkspaces ?? []).find(ws => ws.output === barWindow.screen?.name && ws.is_active)
                     return active !== undefined && !(NiriService.windows ?? []).some(w => w.workspace_id === active.id)
                 }

@@ -54,7 +54,7 @@ Item {
     }
     function usable(kind: string): bool {
         if (kind === "island" || kind === "window" || kind === "time" || kind === "|") return true
-        if (kind === "workspaces") return CompositorService.isNiri && !zones.taken(kind)
+        if (kind === "workspaces") return CompositorService.hasNiriModel && !zones.taken(kind)
         return IrisPieces.extraIds.includes(kind) && IrisPieces.available(kind) && !zones.taken(kind)
     }
     readonly property var entries: {

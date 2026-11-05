@@ -11,6 +11,14 @@ Singleton {
 
     property bool isHyprland: false
     property bool isNiri: false
+    property bool _detected: false
+    // KWin has no wlr-foreign-toplevel and no Niri socket; scripts/kwin/kwin-bridge.py
+    // feeds NiriService the same workspace/window model instead.
+    readonly property bool isKWin: root._detected && !root.isNiri && !root.isHyprland
+        && ((Quickshell.env("XDG_CURRENT_DESKTOP") ?? "").split(":").includes("KDE")
+            || (Quickshell.env("KDE_FULL_SESSION") ?? "").length > 0)
+    // NiriService.workspaces/windows are populated (Niri itself or the KWin bridge).
+    readonly property bool hasNiriModel: root.isNiri || root.isKWin
 
     readonly property string hyprlandSignature: Quickshell.env("HYPRLAND_INSTANCE_SIGNATURE")
     readonly property string niriSocket: Quickshell.env("NIRI_SOCKET")
@@ -131,7 +139,7 @@ Singleton {
     }
     Connections {
         target: NiriService
-        enabled: root.isNiri && root.sortingActive
+        enabled: root.hasNiriModel && root.sortingActive
         function onWindowOrderChanged() { root.scheduleSort() }
         function onActiveWindowChanged() { root.scheduleSort() }
     }
@@ -140,6 +148,9 @@ Singleton {
     }
 
     function computeSortedToplevels() {
+        if (isKWin)
+            return kwinToplevels()
+
         if (!ToplevelManager.toplevels || !ToplevelManager.toplevels.values)
             return []
 
@@ -150,6 +161,32 @@ Singleton {
             return sortHyprlandToplevelsSafe()
 
         return Array.from(ToplevelManager.toplevels.values)
+    }
+
+    // Toplevel-shaped entries for the bridge's windows, in NiriService's layout
+    // order (output, workspace, id). There is no Wayland handle behind them.
+    function kwinToplevels() {
+        return (NiriService.windows ?? []).map(window => {
+            const windowId = window.id
+            return {
+                "appId": window.app_id ?? "",
+                "title": window.title ?? "",
+                "activated": window.is_focused === true,
+                "minimized": window.is_minimized === true,
+                "niriWindowId": windowId,
+                "niriWorkspaceId": window.workspace_id,
+                "_sourceKey": `kwin:${windowId}`,
+                "address": "",
+                "wayland": null,
+                "screens": [],
+                "activate": function () {
+                    return NiriService.focusWindow(windowId)
+                },
+                "close": function () {
+                    return NiriService.closeWindow(windowId)
+                }
+            }
+        })
     }
 
     function _get(o, path, fallback) {
@@ -384,6 +421,7 @@ Singleton {
         if (hyprlandSignature && hyprlandSignature.length > 0) {
             isHyprland = true
             isNiri = false
+            _detected = true
             console.info("CompositorService: Detected Hyprland")
             try {
                 Hyprland.refreshToplevels()
@@ -394,12 +432,16 @@ Singleton {
         if (niriSocket && niriSocket.length > 0) {
             isNiri = true
             isHyprland = false
+            _detected = true
             console.info("CompositorService: Detected Niri with socket:", niriSocket)
             return
         }
 
         isHyprland = false
         isNiri = false
+        _detected = true
+        if (isKWin)
+            console.info("CompositorService: Detected KWin, using the KWin bridge")
     }
 
     function powerOffMonitors() {

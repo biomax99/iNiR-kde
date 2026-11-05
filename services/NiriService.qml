@@ -21,7 +21,7 @@ Singleton {
     property string focusedWorkspaceId: ""
     property var currentOutputWorkspaces: []
     property string currentOutput: ""
-    readonly property bool actionReady: requestSocket.connected
+    readonly property bool actionReady: requestSocket.connected || (CompositorService.isKWin && root.kwinBridgeReady)
 
     // Config load status (updated from ConfigLoaded event)
     property bool configLoaded: false
@@ -97,6 +97,83 @@ Singleton {
         id: requestSocket
         path: root.socketPath
         connected: CompositorService.isNiri
+    }
+
+    // ---- KWin bridge -------------------------------------------------------
+    // On KWin, scripts/kwin/kwin-bridge.py stands in for the Niri socket: its
+    // stdout is a Niri-shaped event stream, its stdin takes the same requests
+    // send() would put on the socket.
+    readonly property bool kwinBridgeWanted: CompositorService.isKWin
+    property bool kwinBridgeReady: false
+    property int _kwinRestartDelayMs: 1000
+    readonly property var _kwinActions: ["FocusWorkspace", "FocusWorkspaceUp", "FocusWorkspaceDown",
+        "FocusWindow", "CloseWindow", "MoveWindowToWorkspace", "ToggleOverview", "OpenOverview"]
+
+    onKwinBridgeWantedChanged: {
+        kwinBridgeRestart.stop()
+        kwinBridge.running = root.kwinBridgeWanted
+    }
+    Component.onCompleted: {
+        if (root.kwinBridgeWanted)
+            kwinBridge.running = true
+    }
+
+    Process {
+        id: kwinBridge
+        command: ["/usr/bin/python3", "-I", Quickshell.shellPath("scripts/kwin/kwin-bridge.py")]
+        stdinEnabled: true
+
+        stdout: SplitParser {
+            onRead: line => root._handleKWinBridgeLine(line)
+        }
+        stderr: SplitParser {
+            onRead: line => console.warn("NiriService: KWin bridge:", line)
+        }
+
+        onExited: (exitCode, exitStatus) => {
+            root.kwinBridgeReady = false
+            if (!root.kwinBridgeWanted)
+                return
+            console.warn("NiriService: KWin bridge exited with", exitCode, "- restarting in", root._kwinRestartDelayMs, "ms")
+            kwinBridgeRestart.interval = root._kwinRestartDelayMs
+            kwinBridgeRestart.restart()
+            root._kwinRestartDelayMs = Math.min(30000, root._kwinRestartDelayMs * 2)
+        }
+    }
+
+    Timer {
+        id: kwinBridgeRestart
+        repeat: false
+        onTriggered: {
+            if (root.kwinBridgeWanted)
+                kwinBridge.running = true
+        }
+    }
+
+    function _handleKWinBridgeLine(line) {
+        let event
+        try {
+            event = JSON.parse(line)
+        } catch (e) {
+            console.warn("NiriService: Failed to parse KWin bridge event:", line, e)
+            return
+        }
+        if (event.KWinReady !== undefined) {
+            root.kwinBridgeReady = true
+            root._kwinRestartDelayMs = 1000
+            return
+        }
+        handleNiriEvent(event)
+    }
+
+    function _sendToKWin(request) {
+        if (!root.kwinBridgeReady || !kwinBridge.running)
+            return false
+        const action = Object.keys(request?.Action ?? {})[0] ?? ""
+        if (!root._kwinActions.includes(action))
+            return false
+        kwinBridge.write(JSON.stringify(request) + "\n")
+        return true
     }
 
     Process {
@@ -816,6 +893,8 @@ Singleton {
     }
 
     function send(request) {
+        if (CompositorService.isKWin)
+            return root._sendToKWin(request)
         if (!CompositorService.isNiri || !requestSocket.connected)
             return false
         requestSocket.send(request)

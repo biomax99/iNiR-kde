@@ -68,7 +68,8 @@ Singleton {
     }
     
     function initialize(): void {
-        if (initialized) return
+        // Cached previews are keyed by Niri window ids; other sessions reuse those numbers.
+        if (initialized || !CompositorService.isNiri) return
         initialized = true
         lastFocusedWindowId = Number(NiriService.activeWindow?.id ?? -1)
         ensureDirProcess.running = true
@@ -276,6 +277,11 @@ Singleton {
     
     // Called when TaskView/dock preview opens - debounced to coalesce rapid hover events
     function captureForTaskView(windowIds = null, maxAgeMs = previewValidityMs): void {
+        // The capture scripts drive `niri msg`; elsewhere callers keep icons and titles.
+        if (!CompositorService.isNiri) {
+            root.captureComplete()
+            return
+        }
         root._queueWindowIds(windowIds, maxAgeMs)
         if (!initialized) initialize()
 
@@ -354,7 +360,7 @@ Singleton {
     
     // Capture ALL windows (force refresh)
     function captureAllWindows(): void {
-        if (capturing) return
+        if (capturing || !CompositorService.isNiri) return
 
         if (!initialized) initialize()
         

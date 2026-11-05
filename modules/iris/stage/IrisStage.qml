@@ -1085,11 +1085,11 @@ Item {
             if (MinimizedWindows.countMinimizedForApp(appId) > 0) {
                 MinimizedWindows.restoreLatestForApp(appId)
             } else if (windows.length > 0) {
-                const current = CompositorService.isNiri
+                const current = CompositorService.hasNiriModel
                     ? windows.findIndex(w => w.niriWindowId !== undefined && w.niriWindowId === (NiriService.activeWindow?.id ?? -1))
                     : windows.findIndex(w => w.activated)
                 const next = windows[(current + 1) % windows.length]
-                if (CompositorService.isNiri && next.niriWindowId !== undefined) NiriService.focusWindow(next.niriWindowId)
+                if (CompositorService.hasNiriModel && next.niriWindowId !== undefined) NiriService.focusWindow(next.niriWindowId)
                 else next.activate()
             } else {
                 const entry = AppSearch.lookupDesktopEntry(appId)

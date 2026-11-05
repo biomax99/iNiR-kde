@@ -214,12 +214,12 @@ Item {
         if (MinimizedWindows.countMinimizedForApp(app.appId) > 0) {
             MinimizedWindows.restoreLatestForApp(app.appId)
         } else if (windows.length > 0) {
-            const current = CompositorService.isNiri
+            const current = CompositorService.hasNiriModel
                 ? windows.findIndex(window => window.niriWindowId !== undefined
                     && window.niriWindowId === (NiriService.activeWindow?.id ?? -1))
                 : windows.findIndex(window => window.activated)
             const next = windows[(current + 1) % windows.length]
-            if (CompositorService.isNiri && next.niriWindowId !== undefined)
+            if (CompositorService.hasNiriModel && next.niriWindowId !== undefined)
                 NiriService.focusWindow(next.niriWindowId)
             else next.activate()
         } else {
@@ -320,7 +320,7 @@ Item {
                 && windowHover.point.position.y < hitArea.y + hitArea.height
             HoverHandler { id: windowHover }
             readonly property bool workspaceEmpty: {
-                if (!root.revealOnEmpty || !CompositorService.isNiri) return false
+                if (!root.revealOnEmpty || !CompositorService.hasNiriModel) return false
                 const active = (NiriService.allWorkspaces ?? []).find(ws => ws.output === root.screen?.name && ws.is_active)
                 return active !== undefined && !(NiriService.windows ?? []).some(w => w.workspace_id === active.id)
             }
@@ -703,7 +703,7 @@ Item {
                                 readonly property var desktopEntry: entry.separator ? null : AppSearch.lookupDesktopEntry(entry.modelData.appId)
                                 readonly property string appName: appSlot.desktopEntry?.name ?? entry.modelData.appId
                                 readonly property bool running: (entry.app.toplevels?.length ?? 0) > 0
-                                readonly property bool focused: (entry.app.toplevels ?? []).some(t => CompositorService.isNiri
+                                readonly property bool focused: (entry.app.toplevels ?? []).some(t => CompositorService.hasNiriModel
                                     ? t.niriWindowId !== undefined && t.niriWindowId === (NiriService.activeWindow?.id ?? -1)
                                     : t.activated)
                                 property real lift: 0
@@ -793,7 +793,7 @@ Item {
                                                 accumulated += direction * 120
                                                 const current = Math.max(0, windows.findIndex(t => t.activated))
                                                 const next = windows[(current + direction + windows.length) % windows.length]
-                                                if (CompositorService.isNiri && next.niriWindowId !== undefined) NiriService.focusWindow(next.niriWindowId)
+                                                if (CompositorService.hasNiriModel && next.niriWindowId !== undefined) NiriService.focusWindow(next.niriWindowId)
                                                 else next.activate()
                                             }
                                         }
@@ -888,7 +888,7 @@ Item {
                                     readonly property int focusedIndex: {
                                         if (!appSlot.focused) return -1
                                         const id = NiriService.activeWindow?.id ?? -1
-                                        const index = (entry.app.toplevels ?? []).findIndex(t => CompositorService.isNiri ? t.niriWindowId === id : t.activated)
+                                        const index = (entry.app.toplevels ?? []).findIndex(t => CompositorService.hasNiriModel ? t.niriWindowId === id : t.activated)
                                         return Math.min(indicators.windows - 1, Math.max(0, index))
                                     }
                                     readonly property bool minimizedOnly: appSlot.running
@@ -1198,7 +1198,7 @@ Item {
                                 id: card
                                 required property string modelData
                                 readonly property var win: menu.windows.find(entry => menu.windowKey(entry) === card.modelData) ?? null
-                                readonly property bool focusedWindow: CompositorService.isNiri
+                                readonly property bool focusedWindow: CompositorService.hasNiriModel
                                     ? card.win?.niriWindowId !== undefined && card.win.niriWindowId === (NiriService.activeWindow?.id ?? -1)
                                     : (card.win?.activated ?? false)
                                 readonly property var niriWindow: (NiriService.windows ?? []).find(w => w.id === card.win?.niriWindowId) ?? null
@@ -1226,7 +1226,7 @@ Item {
                                         return
                                     }
                                     const id = card.win?.niriWindowId
-                                    if (CompositorService.isNiri && id !== undefined) {
+                                    if (CompositorService.hasNiriModel && id !== undefined) {
                                         if (MinimizedWindows.isMinimized(id)) MinimizedWindows.restore(id)
                                         else NiriService.focusWindow(id)
                                     } else card.win?.activate()
@@ -1340,7 +1340,7 @@ Item {
                                         height: width
                                         radius: width / 2
                                         color: closeHover.hovered ? IrisStyle.danger : IrisStyle.veilHeavy
-                                        opacity: card.containsMouse && CompositorService.isNiri ? 1 : 0
+                                        opacity: card.containsMouse && CompositorService.hasNiriModel ? 1 : 0
                                         visible: opacity > 0
                                         Behavior on opacity { NumberAnimation { duration: IrisStyle.duration(120); easing.type: IrisStyle.feedbackEasing } }
                                         MaterialSymbol {
@@ -1462,7 +1462,7 @@ Item {
                             glyph: modelData.activated ? "radio_button_checked" : "select_window"
                             label: String(modelData.title ?? "")
                             onClicked: {
-                                if (CompositorService.isNiri && modelData.niriWindowId !== undefined) NiriService.focusWindow(modelData.niriWindowId)
+                                if (CompositorService.hasNiriModel && modelData.niriWindowId !== undefined) NiriService.focusWindow(modelData.niriWindowId)
                                 else modelData.activate()
                                 window.menuApp = null
                             }
@@ -1501,7 +1501,7 @@ Item {
                         }
                     }
                     MenuRow {
-                        visible: CompositorService.isNiri && (menu.windows?.length ?? 0) > 0
+                        visible: CompositorService.hasNiriModel && (menu.windows?.length ?? 0) > 0
                         glyph: "close"
                         danger: true
                         label: (menu.windows?.length ?? 0) > 1 ? Translation.tr("Close all windows") : Translation.tr("Close window")

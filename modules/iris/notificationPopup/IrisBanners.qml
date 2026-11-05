@@ -77,7 +77,7 @@ Item {
             return
         }
         const key = String(notification?.appName ?? "").toLowerCase()
-        if (key.length > 0 && CompositorService.isNiri) {
+        if (key.length > 0 && CompositorService.hasNiriModel) {
             const window = (NiriService.windows ?? []).find(w => String(w.app_id ?? "").toLowerCase().includes(key))
             if (window) NiriService.focusWindow(window.id)
         }

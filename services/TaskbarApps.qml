@@ -118,7 +118,7 @@ Singleton {
         // live foreign-toplevel handles with exact Niri ids and drops stale
         // handles instead of letting ghost apps survive in the taskbar.
         const sorted = CompositorService.sortedToplevels ?? [];
-        const sourceToplevels = CompositorService.isNiri
+        const sourceToplevels = CompositorService.hasNiriModel
             ? sorted
             : (sorted.length > 0
                 ? sorted

@@ -174,7 +174,7 @@ ColumnLayout {
     }
 
 
-    readonly property var workspaces: CompositorService.isNiri
+    readonly property var workspaces: CompositorService.hasNiriModel
         ? (NiriService.allWorkspaces ?? []).filter(ws => ws.output === page.island.targetScreen?.name) : []
     readonly property var activeWorkspace: page.workspaces.find(ws => ws.is_active) ?? null
     readonly property var focusedWindow: {
