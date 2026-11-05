@@ -534,7 +534,8 @@ Singleton {
 		// YouTube hover previews inherit the browser MPRIS service, but their
 		// page URL has no playable video id. Reject them before the streaming
 		// branches below can accept isPlaying/length as sufficient evidence.
-		if (root._isBrowserPlayer(player) && root._isYoutubeUrl(rawUrl)
+		// YouTube Music keeps playing on any page (search, library), so its URL proves nothing.
+		if (root._isBrowserPlayer(player) && root._isYoutubeUrl(rawUrl) && !/music\.youtube\.com/i.test(rawUrl)
 				&& root._extractYoutubeVideoId(rawUrl).length === 0) {
 			return false;
 		}
@@ -682,7 +683,7 @@ Singleton {
 			return false;
 		}
 		// Ignore YouTube hover cards with zero progress (no playback yet)
-		if (isBrowserPlayer && root._isYoutubeUrl(trackUrl)) {
+		if (isBrowserPlayer && root._isYoutubeUrl(trackUrl) && !/music\.youtube\.com/i.test(trackUrl)) {
 			if (root._extractYoutubeVideoId(trackUrl).length === 0) return false;
 			if (!player.isPlaying) {
 				const hasProgress = (player.position ?? 0) > 0 || (player.length ?? 0) > 0;
