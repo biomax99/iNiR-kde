@@ -13,7 +13,10 @@ Singleton {
     id: root
 
     readonly property string provider: "awww"
+    // KWin shows only "desktop" layer surfaces behind its Overview and desktop grid, so
+    // there the iRiS background draws the wallpaper itself under that namespace.
     readonly property bool enabled: (Config.options?.background?.backend?.provider ?? "awww") === provider
+        && !CompositorService.isKWin
     readonly property int transitionFps: Config.options?.background?.backend?.awww?.transitionFps ?? 60
     readonly property int simpleStep: Config.options?.background?.backend?.awww?.simpleStep ?? 5
     readonly property int spatialStep: Config.options?.background?.backend?.awww?.spatialStep ?? 30

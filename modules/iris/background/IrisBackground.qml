@@ -38,8 +38,11 @@ Variants {
 
         screen: modelData
         exclusionMode: ExclusionMode.Ignore
-        WlrLayershell.layer: WlrLayer.Bottom
-        WlrLayershell.namespace: "quickshell:iris-background"
+        // On KWin it sits where Plasma's own desktop does: the background layer.
+        WlrLayershell.layer: CompositorService.isKWin ? WlrLayer.Background : WlrLayer.Bottom
+        // KWin types a layer surface by its namespace; "desktop" makes this the
+        // desktop window its Overview and desktop grid draw behind the windows.
+        WlrLayershell.namespace: CompositorService.isKWin ? "desktop" : "quickshell:iris-background"
         // The lightweight background is used specifically when desktop widgets
         // are disabled. Bare-desktop actions are shell actions, not widget
         // actions, so keep the surface pointer-capable and only request keyboard
