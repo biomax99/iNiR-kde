@@ -1157,8 +1157,10 @@ Scope {
         screen: modelData
         exclusionMode: ExclusionMode.Ignore
         // Keep background behind the lock surface. Moving this to Overlay can capture input.
-        WlrLayershell.layer: WlrLayer.Bottom
-        WlrLayershell.namespace: "quickshell:background"
+        // On KWin it sits where Plasma's own desktop does: the background layer, namespace
+        // "desktop", so KWin types it as the desktop window its Overview draws behind windows.
+        WlrLayershell.layer: CompositorService.isKWin ? WlrLayer.Background : WlrLayer.Bottom
+        WlrLayershell.namespace: CompositorService.isKWin ? "desktop" : "quickshell:background"
         // Host for LiveLayer (continuous motion in a widget moves to a small surface of its own instead of
         // repainting this whole output every frame): nothing here covers or moves a still widget outside edit.
         readonly property bool liveCalm: !GlobalStates.widgetEditMode && !GlobalStates.shellLayoutEditMode

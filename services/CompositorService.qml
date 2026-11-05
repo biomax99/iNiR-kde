@@ -14,7 +14,9 @@ Singleton {
     property bool _detected: false
     // KWin has no wlr-foreign-toplevel and no Niri socket; scripts/kwin/kwin-bridge.py
     // feeds NiriService the same workspace/window model instead.
-    readonly property bool isKWin: root._detected && !root.isNiri && !root.isHyprland
+    // Read straight from the environment, not after detectCompositor(): layer surfaces
+    // fix their namespace when created, and the KWin desktop window must be born "desktop".
+    readonly property bool isKWin: !root.hyprlandSignature && !root.niriSocket
         && ((Quickshell.env("XDG_CURRENT_DESKTOP") ?? "").split(":").includes("KDE")
             || (Quickshell.env("KDE_FULL_SESSION") ?? "").length > 0)
     // NiriService.workspaces/windows are populated (Niri itself or the KWin bridge).
