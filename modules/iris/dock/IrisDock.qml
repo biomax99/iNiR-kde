@@ -307,7 +307,7 @@ Item {
             readonly property point menuAnchor: {
                 const icon = window.menuIcon
                 void (icon?.x + icon?.y + icon?.width + icon?.height + icon?.scale
-                    + appRow.x + appRow.width + window.width + window.height)
+                    + appRow.x + appRow.width + window.width + window.height + window.edgeOffset)
                 if (!icon) return window.menuAnchorHold
                 return root.innerPoint(icon)
             }
@@ -341,6 +341,48 @@ Item {
                 }
             }
             readonly property bool menuOpen: window.menuApp !== null
+            // Hover previews: resting on a running app's icon shows its windows (live where KWin streams them), as
+            // Caelestia's dock does. The preview follows the pointer from icon to icon and closes once the pointer
+            // has left both the icons and the preview; a click on the icon keeps it.
+            readonly property bool hoverPreviews: root.options?.hoverPreviews ?? true
+            property bool menuPeek: false
+            property Item peekIcon: null
+            property var peekApp: null
+            function hoverIcon(app: var, icon: Item, hovered: bool): void {
+                if (hovered) {
+                    window.peekIcon = icon
+                    window.peekApp = app
+                    peekLeave.stop()
+                    if (!window.hoverPreviews || GlobalStates.irisEdit || root.slideApp.length > 0) return
+                    const running = (app?.toplevels?.length ?? 0) > 0
+                    if (window.menuOpen && window.menuPeek) {
+                        if (running) window.showPeek()
+                        else peekLeave.restart()
+                    } else if (!window.menuOpen && running) peekDwell.restart()
+                } else if (window.peekIcon === icon) {
+                    window.peekIcon = null
+                    window.peekApp = null
+                    peekDwell.stop()
+                    if (window.menuPeek) peekLeave.restart()
+                }
+            }
+            function showPeek(): void {
+                const app = window.peekApp
+                if (!app || !window.peekIcon || (app.toplevels?.length ?? 0) === 0) return
+                if (window.menuOpen && (!window.menuPeek || window.menuApp?.appId === app.appId)) return
+                window.frozenSlotX = window.pointerSlotX
+                window.captureMenuAnchor(window.peekIcon)
+                window.menuMode = "windows"
+                window.menuPeek = true
+                window.menuApp = app
+                nameLabel.present(null, "")
+            }
+            Timer { id: peekDwell; interval: 420; onTriggered: window.showPeek() }
+            Timer {
+                id: peekLeave
+                interval: 360
+                onTriggered: if (window.menuPeek && !menuHover.hovered && !window.peekApp) window.menuApp = null
+            }
             readonly property real dockHeight: root.iconSize + 18 * root.d
             // Notch: the body rests on the band's inner line and melts into it.
             // Plain: it floats, keeping its own air above the band.
@@ -396,6 +438,9 @@ Item {
             Timer { id: hideDelay; interval: 420; onTriggered: if (!window.pointerOnDock && !window.menuOpen) window.edgeIntent = false }
             onMenuOpenChanged: {
                 if (window.menuOpen) return
+                window.menuPeek = false
+                peekDwell.stop()
+                peekLeave.stop()
                 if (!window.pointerOnDock) hideDelay.restart()
             }
 
@@ -724,6 +769,7 @@ Item {
                                     GlobalStates.irisDockShown = true
                                     window.captureMenuAnchor(appIcon)
                                     window.menuMode = request.mode === "menu" ? "menu" : "windows"
+                                    window.menuPeek = false
                                     window.menuApp = entry.app
                                 }
                             }
@@ -768,6 +814,10 @@ Item {
                                         return
                                     }
                                     if ((entry.app.toplevels?.length ?? 0) > 1) {
+                                        if (window.menuPeek && window.menuApp?.appId === entry.modelData.appId) {
+                                            window.menuPeek = false
+                                            return
+                                        }
                                         if (window.menuOpen && window.menuMode === "windows"
                                             && window.menuApp?.appId === entry.modelData.appId) {
                                             window.menuApp = null
@@ -776,6 +826,7 @@ Item {
                                         window.frozenSlotX = window.pointerSlotX
                                         window.captureMenuAnchor(appIcon)
                                         window.menuMode = "windows"
+                                        window.menuPeek = false
                                         window.menuApp = entry.app
                                         nameLabel.present(null, "")
                                         return
@@ -808,7 +859,10 @@ Item {
                                     quiet: true
                                     colBackgroundHover: "transparent"
                                     Accessible.name: appSlot.appName
-                                    onHoveredChanged: nameLabel.present(hovered ? appSlot : null, appSlot.appName, entry.app.toplevels?.length ?? 0)
+                                    onHoveredChanged: {
+                                        nameLabel.present(hovered ? appSlot : null, appSlot.appName, entry.app.toplevels?.length ?? 0)
+                                        window.hoverIcon(entry.app, appIcon, hovered)
+                                    }
                                     onClicked: appSlot.primary()
                                     middleClickAction: () => {
                                         const e = AppSearch.lookupDesktopEntry(entry.modelData.appId)
@@ -819,6 +873,7 @@ Item {
                                         window.frozenSlotX = window.pointerSlotX
                                         window.captureMenuAnchor(appIcon)
                                         window.menuMode = "menu"
+                                        window.menuPeek = false
                                         window.menuApp = entry.app
                                         nameLabel.present(null, "")
                                     }
@@ -1144,6 +1199,18 @@ Item {
                     ? Math.max(menu.topClear, Math.min(window.height - height - menu.bottomClear, window.menuAnchor.y - height / 2))
                     : root.atTop ? window.menuAnchor.y + 8 * root.d : window.menuAnchor.y - height - 8 * root.d)
                 visible: progress > 0
+                // A preview that follows the pointer to the next icon glides there rather than jumping.
+                readonly property bool gliding: window.menuPeek && menu.settled && IrisStyle.motionEnabled
+                Behavior on x { enabled: menu.gliding; NumberAnimation { duration: IrisStyle.duration(220); easing.type: Easing.BezierSpline; easing.bezierCurve: IrisStyle.morphCurve } }
+                Behavior on width { enabled: menu.gliding; NumberAnimation { duration: IrisStyle.duration(220); easing.type: Easing.BezierSpline; easing.bezierCurve: IrisStyle.morphCurve } }
+                Behavior on height { enabled: menu.gliding; NumberAnimation { duration: IrisStyle.duration(220); easing.type: Easing.BezierSpline; easing.bezierCurve: IrisStyle.morphCurve } }
+                HoverHandler {
+                    id: menuHover
+                    onHoveredChanged: {
+                        if (menuHover.hovered) peekLeave.stop()
+                        else if (window.menuPeek) peekLeave.restart()
+                    }
+                }
                 onClosed: {
                     if (!window.menuOpen) {
                         menu.app = null
@@ -1193,8 +1260,8 @@ Item {
                     anchors.top: parent.top
                     anchors.margins: 10 * root.d
                     spacing: 8 * root.d
-                    readonly property real cardWidth: Math.round(196 * root.d)
-                    readonly property real cardHeight: Math.round(124 * root.d)
+                    readonly property real cardWidth: Math.round(232 * root.d)
+                    readonly property real cardHeight: Math.round(146 * root.d)
                     readonly property int columns: Math.max(1, Math.min(root.vertical ? 2 : 4, menu.windows.length))
 
                     RowLayout {
@@ -1288,7 +1355,11 @@ Item {
                                     Behavior on scale { NumberAnimation { duration: IrisStyle.duration(110); easing.type: IrisStyle.feedbackEasing } }
 
                                     readonly property real aspect: {
-                                        const size = card.niriWindow?.layout?.window_size ?? [16, 10]
+                                        const streamed = live.item?.aspect ?? 0
+                                        const kwin = card.niriWindow?.kwin_size ?? [0, 0]
+                                        const size = streamed > 0 ? [streamed, 1]
+                                            : Number(kwin[0]) > 0 && Number(kwin[1]) > 0 ? kwin
+                                            : card.niriWindow?.layout?.window_size ?? [16, 10]
                                         return Math.max(0.45, Math.min(2.6, Number(size[0]) / Math.max(1, Number(size[1]))))
                                     }
                                     readonly property int seed: {
@@ -1299,14 +1370,13 @@ Item {
                                     }
                                     readonly property real room: Math.round(14 * root.d)
 
-                                    Rectangle {
+                                    ClippingRectangle {
                                         id: silhouette
                                         readonly property real fitWidth: Math.min(plate.width - plate.room * 2, (plate.height - plate.room * 2) * plate.aspect)
                                         anchors.centerIn: parent
                                         width: Math.round(silhouette.fitWidth)
                                         height: Math.round(silhouette.fitWidth / plate.aspect)
                                         radius: IrisStyle.radiusChip
-                                        clip: true
                                         color: IrisStyle.surfaceHigh
                                         opacity: card.minimized ? 0.55 : 1
                                         scale: card.containsMouse ? 1.03 : 1
@@ -1338,6 +1408,15 @@ Item {
                                             icon: IrisPieces.appIcon(menu.app?.appId ?? "")
                                             fallback: "application-x-executable"
                                             iconSize: Math.round(Math.min(34, Math.max(20, silhouette.height * 0.42)) * root.d)
+                                        }
+                                        // The window itself, live, over its silhouette (KWin: Caelestia's WindowStream).
+                                        Loader {
+                                            id: live
+                                            anchors.fill: parent
+                                            readonly property string uuid: String(card.niriWindow?.kwin_uuid ?? "")
+                                            active: CompositorService.isKWin && live.uuid.length > 0 && !card.minimized && menu.open
+                                            source: Qt.resolvedUrl("IrisWindowStream.qml")
+                                            onLoaded: live.item.uuid = Qt.binding(() => live.uuid)
                                         }
                                     }
                                     // Where the window sits in its workspace's strip: one mark per column, its own lit. The

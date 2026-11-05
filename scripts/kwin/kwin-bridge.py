@@ -370,6 +370,9 @@ class Bridge:
                 "is_minimized": bool(window.get("minimized")),
                 "is_fullscreen": bool(window.get("fullScreen")),
                 "layout": None,
+                # KWin's own handle and size: what a window stream and its thumbnail need.
+                "kwin_uuid": uuid,
+                "kwin_size": [window.get("width", 0), window.get("height", 0)],
                 "focus_timestamp": {"secs": stamp // 1_000_000_000, "nanos": stamp % 1_000_000_000},
             })
         niri_windows.sort(key=lambda w: w["id"])

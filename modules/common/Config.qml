@@ -3984,6 +3984,7 @@ Singleton {
                     property int magnifySize: 150 // hovered icon at its largest, % of its size
                     property bool badges: true // Unread notification counts on app icons
                     property bool launcher: true // Applications button at the start of the Dock
+                    property bool hoverPreviews: true // resting on a running app's icon shows its windows (live on KWin)
                     // A command that opens another shell's launcher in place of Spotlight. It gets "toggle", the output
                     // name and the Dock's resting body and motion as JSON, to grow out of the Dock.
                     property list<string> externalLauncher: []

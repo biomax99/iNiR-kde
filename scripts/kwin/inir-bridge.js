@@ -90,6 +90,8 @@ function snapshot() {
             output: w.output ? String(w.output.name) : "",
             minimized: !!w.minimized,
             fullScreen: !!w.fullScreen,
+            width: Math.round(w.frameGeometry.width),
+            height: Math.round(w.frameGeometry.height),
             stack: stack[uuid] !== undefined ? stack[uuid] : -1
         });
     }
