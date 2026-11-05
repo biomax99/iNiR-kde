@@ -240,7 +240,17 @@ Item {
     function openExternalDashboard(mode: string): bool {
         const command = root.options?.externalDashboard ?? []
         if (command.length === 0) return false
-        Quickshell.execDetached([...command, mode, root.targetScreen?.name ?? ""])
+        // The resting body and the Island's own motion, so the dashboard grows out of it.
+        const at = chassis.mapToItem(null, 0, 0)
+        const motion = intent => {
+            const spring = IrisStyle.springFor(intent, "")
+            return { duration: IrisStyle.durationOf(spring), curve: IrisStyle.curveOf(spring) }
+        }
+        const from = { x: at.x, y: at.y, width: chassis.width, height: chassis.height,
+            radius: chassis.restRadius, openRadius: chassis.openRadius, color: String(IrisStyle.surface),
+            emerge: motion("emerge"), recede: motion("recede"),
+            rise: IrisStyle.morph?.rise ?? 0.3, span: IrisStyle.morph?.span ?? 0.35 }
+        Quickshell.execDetached([...command, mode, root.targetScreen?.name ?? "", JSON.stringify(from)])
         // Re-armed when the pointer leaves, or a hover reopens what a click closed.
         root.hoverArmed = false
         return true
