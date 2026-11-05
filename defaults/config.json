@@ -2407,6 +2407,8 @@
             "magnifySize": 150,
             "badges": true,
             "launcher": true,
+            "externalLauncher": [],
+            "launcherShortcuts": [],
             "reorder": true,
             "arrange": "pinned",
             "revealOnEmpty": true,
