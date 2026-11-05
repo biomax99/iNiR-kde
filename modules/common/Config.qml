@@ -4153,6 +4153,9 @@ Singleton {
                     property list<string> pieces: []
                     property bool hoverExpand: true
                     property int hoverDelay: 300
+                    // A command that replaces the desktop page with another shell's dashboard.
+                    // It gets "toggle" (click) or "peek" (hover) and the output name.
+                    property list<string> externalDashboard: []
                     // Expanded Island: page width (px) and its navigation, in order (media, activity, desktop,
                     // tray, tools, focus, today, controls, settings).
                     property int pageWidth: 440

@@ -230,11 +230,20 @@ Item {
     }
 
     function openPage(nextPage: string, pin: bool, origin): void {
+        if (nextPage === "desktop" && root.openExternalDashboard(pin ? "toggle" : "peek")) return
         root.page = nextPage
         root.pageOrigin = origin ?? null
         if (origin) { root.pageOriginX = -1; root.pageOriginY = -1 }
         if (pin) root.pinned = true
         root.expanded = true
+    }
+    function openExternalDashboard(mode: string): bool {
+        const command = root.options?.externalDashboard ?? []
+        if (command.length === 0) return false
+        Quickshell.execDetached([...command, mode, root.targetScreen?.name ?? ""])
+        // Re-armed when the pointer leaves, or a hover reopens what a click closed.
+        root.hoverArmed = false
+        return true
     }
     property real pageOriginX: -1
     property real pageOriginY: -1
