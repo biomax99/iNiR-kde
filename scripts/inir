@@ -1522,9 +1522,11 @@ detect_running_instance_dir() {
         local json_output
         json_output="$($qs_bin list --all --json 2>/dev/null || true)"
         if [[ -n "$json_output" && "$json_output" != "[]" ]]; then
+            # iNiR's own instance first: other Quickshell configs (another shell, a dashboard) may run beside it.
             running_path="$(printf '%s' "$json_output" | jq -r '
-                [.[] | (.config_path // .configPath // empty) | select(endswith("/shell.qml"))]
-                | .[0] // empty
+                [.[] | select((.shell_id // .shellId // "") == "inir") | (.config_path // .configPath // empty)]
+                + [.[] | (.config_path // .configPath // empty)]
+                | .[] | select(endswith("/shell.qml"))
             ' 2>/dev/null || true)"
         fi
     fi
@@ -1534,17 +1536,20 @@ detect_running_instance_dir() {
         local text_output
         text_output="$($qs_bin list --all 2>/dev/null || true)"
         if [[ -n "$text_output" ]]; then
-            running_path="$(printf '%s' "$text_output" | sed -n 's/^[[:space:]]*Config path:[[:space:]]*//p' | grep '/shell\.qml$' | head -1)"
+            running_path="$(printf '%s' "$text_output" | sed -n 's/^[[:space:]]*Config path:[[:space:]]*//p' | grep '/shell\.qml$')"
         fi
     fi
 
-    if [[ -n "$running_path" ]]; then
-        local dir="${running_path%/shell.qml}"
-        if [[ -d "$dir" && -f "$dir/shell.qml" ]]; then
+    # Only a directory that is an iNiR tree answers iNiR's IPC.
+    local path dir
+    while IFS= read -r path; do
+        [[ -n "$path" ]] || continue
+        dir="${path%/shell.qml}"
+        if [[ -f "$dir/shell.qml" && -f "$dir/scripts/inir" ]]; then
             printf '%s' "$dir"
             return 0
         fi
-    fi
+    done <<< "$running_path"
 
     return 1
 }
