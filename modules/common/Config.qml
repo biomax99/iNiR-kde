@@ -4588,6 +4588,7 @@ Singleton {
                 property JsonObject notifications: JsonObject {
                     property int width: 380
                     property int duration: 4000 // Banner time on screen (ms) when the app does not set one
+                    property string position: "center" // Banners across the Island's edge: "center" (out of the Island), "right" or "left"
                     property bool fullscreen: true // banners over fullscreen windows; off holds them for Today
                 }
                 property JsonObject osd: JsonObject {

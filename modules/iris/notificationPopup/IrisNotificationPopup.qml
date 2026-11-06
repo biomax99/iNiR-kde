@@ -32,7 +32,7 @@ PanelWindow {
     Timer { id: exitLinger; interval: IrisStyle.settleDuration * 2 + 80 }
     IrisOutputHold {
         id: outputHold
-        wanted: GlobalStates.focusedScreen
+        wanted: Quickshell.screens.find(screen => screen.name === GlobalStates.notificationScreen) ?? GlobalStates.focusedScreen
         live: root.visible
     }
     screen: outputHold.output
@@ -137,9 +137,15 @@ PanelWindow {
             readonly property bool critical: String(banner.notification?.urgency ?? "") === "critical"
             readonly property bool hovered: bannerHover.hovered
             width: popupColumn.width
-            height: plate.height
+            // Its whole height from the start, the plate growing inside it (IrisBanners says why).
+            height: banner.fullHeight
 
-            onHoveredChanged: if (banner.hovered) Notifications.cancelTimeout(banner.notification.notificationId)
+            onHoveredChanged: {
+                const id = banner.notification?.notificationId
+                if (id === undefined) return
+                if (banner.hovered) Notifications.cancelTimeout(id)
+                else Notifications.resumeTimeout(id)
+            }
             HoverHandler { id: bannerHover }
 
             property real appear: 0

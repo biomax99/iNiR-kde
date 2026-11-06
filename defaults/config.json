@@ -2835,6 +2835,7 @@
         "notifications": {
             "width": 380,
             "duration": 4000,
+            "position": "center",
             "fullscreen": true
         },
         "osd": {

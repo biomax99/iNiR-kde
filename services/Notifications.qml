@@ -590,6 +590,15 @@ Singleton {
         }
     }
 
+    // Hovering a banner holds it (cancelTimeout); leaving it gives it a fresh stay, so nothing a pointer crossed stays up for good.
+    function resumeTimeout(id) {
+        const notif = root.list.find((notif) => notif.notificationId === id);
+        if (!notif || !notif.popup || notif.timer != null || !notif.notification) return;
+        const timeout = _timeoutForNotification(notif.notification);
+        if (timeout !== 0)
+            notif.timer = notifTimerComponent.createObject(root, { "notificationId": id, "interval": timeout });
+    }
+
     function timeoutNotification(id) {
         const index = root.list.findIndex((notif) => notif.notificationId === id);
         if (root.list[index] != null)

@@ -20,7 +20,8 @@ Item {
     readonly property string screenName: root.screenData?.name ?? ""
     readonly property bool fullscreenHere: CompositorService.isNiri && GameMode.hasFullscreenOnOutput(root.screenName) && !NiriService.inOverview
     // Customize owns the Island's surroundings while it is open: banners wait, and still land in Today.
-    readonly property bool present: root.screenName === (GlobalStates.focusedScreen?.name ?? "") && !root.fullscreenHere
+    readonly property bool present: root.screenName === (GlobalStates.notificationScreen || (GlobalStates.focusedScreen?.name ?? ""))
+        && !root.fullscreenHere
         && !GlobalStates.irisEdit
         && (root.popups.length > 0 || exitLinger.running)
     readonly property var hitRect: root.present && popupColumn.contentHeight > 0
@@ -31,6 +32,9 @@ Item {
     readonly property bool barTop: root.islandEdge !== "bottom"
     readonly property bool islandSide: root.islandEdge === "left" || root.islandEdge === "right"
     readonly property real sideGap: IrisFrame.safeClear(root.islandEdge) + Math.round(12 * root.d)
+    // Across a top or bottom Island: out of the Island in the middle, or in a corner beside it.
+    readonly property string across: root.islandSide ? "center" : String(root.options?.position ?? "center")
+    readonly property real cornerGap: IrisFrame.band + Math.round(12 * root.d)
     readonly property var popups: (Notifications.popupList ?? []).slice(-3).reverse()
     readonly property real d: IrisStyle.density
     readonly property real edgeOffset: (Number(root.barOptions?.height ?? 42)
@@ -87,7 +91,9 @@ Item {
     ListView {
         id: popupColumn
         x: Math.round(root.islandEdge === "left" ? root.sideGap
-            : root.islandEdge === "right" ? parent.width - width - root.sideGap : (parent.width - width) / 2)
+            : root.islandEdge === "right" ? parent.width - width - root.sideGap
+            : root.across === "right" ? parent.width - width - root.cornerGap
+            : root.across === "left" ? root.cornerGap : (parent.width - width) / 2)
         y: Math.round(root.islandSide ? IrisFrame.safeInset("top") + Math.round(12 * root.d)
             : root.barTop ? Math.max(root.edgeOffset + IrisFrame.band, root.islandClear)
             : parent.height - height - Math.max(root.edgeOffset + IrisFrame.band, root.islandClear))
@@ -127,9 +133,16 @@ Item {
             readonly property bool critical: String(banner.notification?.urgency ?? "") === "critical"
             readonly property bool hovered: bannerHover.hovered
             width: popupColumn.width
-            height: plate.height
+            // Its whole height from the start, the plate growing inside it: a slot that grew with the plate left the
+            // banners below where the list had moved them for its first height, overlapping it until the next layout.
+            height: banner.fullHeight
 
-            onHoveredChanged: if (banner.hovered) Notifications.cancelTimeout(banner.notification.notificationId)
+            onHoveredChanged: {
+                const id = banner.notification?.notificationId
+                if (id === undefined) return
+                if (banner.hovered) Notifications.cancelTimeout(id)
+                else Notifications.resumeTimeout(id)
+            }
             HoverHandler { id: bannerHover }
 
             // Frozen: a discarded notification is destroyed before its banner leaves, orphaning a live key.
@@ -143,7 +156,7 @@ Item {
             property real leave: 0
             readonly property bool swiped: Math.abs(banner.swipe) > 1
             readonly property real bloom: Math.min(banner.appear, banner.swiped ? 1 : 1 - banner.leave)
-            readonly property bool meltsIntoIsland: root.island !== null && !root.islandSide
+            readonly property bool meltsIntoIsland: root.island !== null && !root.islandSide && root.across === "center"
             // Measured a tick later: wrapped text re-measures inside the layout while the plate's height is read.
             readonly property real measuredHeight: content.implicitHeight + 24 * root.d
             property real fullHeight: banner.measuredHeight

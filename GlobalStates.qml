@@ -81,6 +81,19 @@ Singleton {
     }
 
     property bool osdKeyboardLayoutOpen: false
+    // The output banners show on: the focused one when the first arrives, kept until the last has left, so they never
+    // jump to another screen behind the pointer.
+    property string notificationScreen: ""
+    Connections {
+        target: Notifications
+        function onPopupListChanged(): void {
+            if ((Notifications.popupList?.length ?? 0) === 0) { notificationRelease.restart(); return }
+            notificationRelease.stop()
+            if (root.notificationScreen.length === 0) root.notificationScreen = root.focusedScreen?.name ?? ""
+        }
+    }
+    // After the last banner's exit has played out on its screen.
+    Timer { id: notificationRelease; interval: 1200; onTriggered: root.notificationScreen = "" }
     // A line Plasma's OSD would show (a power profile, "no output device"), from the KWin bridge: icon is a freedesktop name.
     signal osdTextRequested(string icon, string text)
     // While Plasma's shell is away, the levels the session's own shortcuts change reach its OSD through the KWin bridge.
