@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Stop iNiR on KWin and start plasmashell again.
+set -euo pipefail
+export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
+UNIT=inir-kde
+PLASMA=plasma-plasmashell.service
+
+systemctl --user stop "$UNIT" 2>/dev/null || true
+systemctl --user reset-failed "$UNIT" 2>/dev/null || true
+# While iNiR runs, its KWin bridge answers Plasma's OSD as org.kde.plasmashell; plasmashell must find the name free.
+for _ in $(seq 30); do
+    busctl --user status org.kde.plasmashell >/dev/null 2>&1 || break
+    sleep 0.1
+done
+systemctl --user reset-failed "$PLASMA" 2>/dev/null || true
+systemctl --user start "$PLASMA"
+echo "Plasma is back."

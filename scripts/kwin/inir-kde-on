@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Run iNiR (iRiS) on KWin until logout: stops plasmashell and starts `qs -c inir` as the transient user unit inir-kde.
+# Nothing is installed or enabled at login. Undo: inir-kde-off.
+set -euo pipefail
+export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
+UNIT=inir-kde
+PLASMA=plasma-plasmashell.service
+
+if systemctl --user is-active -q "$UNIT"; then
+    echo "iNiR is already running ($UNIT)."; exit 0
+fi
+systemctl --user stop "$PLASMA" 2>/dev/null || true
+systemctl --user reset-failed "$UNIT" 2>/dev/null || true
+# The systemd manager's environment, not this terminal's XDG_* overrides.
+systemd-run --user --quiet --unit="$UNIT" --collect --property=Slice=app.slice \
+    --description="iNiR on KWin" qs -c inir
+
+# A shell that dies at once must not leave the session without a desktop.
+for _ in 1 2 3 4 5 6; do
+    sleep 0.5
+    systemctl --user is-active -q "$UNIT" || break
+done
+if ! systemctl --user is-active -q "$UNIT"; then
+    echo "iNiR did not start; bringing plasmashell back. Log: journalctl --user -u $UNIT" >&2
+    systemctl --user reset-failed "$PLASMA" 2>/dev/null || true
+    systemctl --user start "$PLASMA"
+    exit 1
+fi
+echo "iNiR is on. Back to Plasma: inir-kde-off"

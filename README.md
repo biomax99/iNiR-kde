@@ -5,6 +5,10 @@
 <h1 align="center">iNiR</h1>
 
 <p align="center">
+  <b>This fork runs iRiS on KDE Plasma 6 (KWin) as well: see <a href="KDE.md">KDE.md</a>.</b>
+</p>
+
+<p align="center">
   <b>A complete desktop shell for Niri, built on Quickshell</b>
 </p>
 
