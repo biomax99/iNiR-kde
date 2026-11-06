@@ -11,8 +11,9 @@ Item {
     property Item field: null
     LoginCore { id: loginCore; field: surface.field }
 
-    // 1 at 1920x1080; narrow and portrait screens scale by width so nothing overflows.
+    // 1 at 1920x1080; narrow and portrait screens scale by width so nothing overflows. lock.loginScale sizes it all.
     readonly property real d: Math.max(0.75, Math.min(2.5, Math.min(surface.height / 1080, surface.width / 1600)))
+        * Math.max(0.5, Math.min(1.5, loginCore.num("irisScale", 100) / 100))
     function type(px) { return Math.round(px * surface.d * loginCore.typeScale) }
     function px(n) { return Math.round(n * surface.d) }
     // SDDM draws one view per screen; only the primary one asks for the password.

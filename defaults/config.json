@@ -1500,6 +1500,7 @@
         "materialShapeChars": true,
         "loginScreen": "auto",
         "loginStyle": "lens",
+        "loginScale": 100,
         "enableAnimation": false,
         "notifications": {
             "enable": false,

@@ -174,6 +174,7 @@ def read_iris(config, palette):
         "irisFontMain": main_font,
         "irisFontClock": clock_font,
         "irisTypeScale": kind.get("scale", 100),
+        "irisScale": dig(config, "lock", "loginScale", default=100),
         "irisClockFormat": kind.get("clockFormat", "auto"),
         "irisDateFormat": kind.get("dateFormat", "long"),
         "irisAvatar": flag(session.get("avatar", True)),

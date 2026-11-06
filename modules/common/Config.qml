@@ -2973,6 +2973,7 @@ Singleton {
                 property bool materialShapeChars: true
                 property string loginScreen: "auto" // SDDM look: "auto" (iris under the iRiS family, else classic), "classic" or "iris"
                 property string loginStyle: "lens" // the iRiS login's composition: "cover", "frame" or "lens"
+                property int loginScale: 100 // the iRiS login's size, in percent of its own (50-150): clock, field, avatar
                 property bool enableAnimation: false // Play video/GIF wallpapers on lock screen (default: show first frame)
                 property JsonObject dim: JsonObject {
                     property bool enable: false
