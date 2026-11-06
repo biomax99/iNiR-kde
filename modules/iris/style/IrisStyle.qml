@@ -595,6 +595,8 @@ QtObject {
     readonly property color rim: root.edgeStyle !== "line" ? Qt.color("transparent")
         : root.rimTint === "accent" ? ColorUtils.applyAlpha(root.accent, Math.min(0.9, 0.3 + 0.3 * root.tweak("lines", 0, 2)))
         : root.rimTint === "highlight" ? ColorUtils.applyAlpha(root.secondaryAccent, Math.min(0.9, 0.3 + 0.3 * root.tweak("lines", 0, 2)))
+        // A quiet grey line of its own, as present as the accent one at the same Lines, whatever the preset's fill.
+        : root.rimTint === "grey" ? ColorUtils.applyAlpha(ColorUtils.mix(root.text, "#808080", 0.5), Math.min(0.9, 0.3 + 0.3 * root.tweak("lines", 0, 2)))
         : root.border
     readonly property int rimWidth: Math.max(1, Math.round(Math.max(1, Math.min(3, Number(root.theme?.rimWidth ?? 1))) * root.density))
     readonly property real glow: Math.max(0, Math.min(1, Number(root.theme?.glow ?? 0) / 100))

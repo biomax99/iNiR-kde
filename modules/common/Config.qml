@@ -4077,7 +4077,7 @@ Singleton {
                         property string weight: "regular" // iRiS type weight: "light", "regular" or "bold"
                         property bool rim: true     // the hairline around the field's silhouette
                         property string edges: "line" // the edge every body wears: "line" (the hairline) or "light" (lit from above like glass); rim false turns it off
-                        property string rimTint: "neutral" // that hairline's ink: "neutral", "accent" or "highlight"
+                        property string rimTint: "neutral" // that hairline's ink: "neutral", "grey", "accent" or "highlight"
                         property int rimWidth: 1    // its width, 1-3 px
                         property int glow: 0        // how much shadows take the accent colour, 0-100
                         property int accentHue: 212    // accent "custom": its hue, 0-359
