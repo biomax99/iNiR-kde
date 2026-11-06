@@ -22,6 +22,11 @@ IrisWidgetFace {
     readonly property real loadHeight: root.contentHeight
         - (root.heats.length ? root.heatHeight + root.sectionGap : 0)
         - (root.hasDisk ? root.diskHeight + root.sectionGap : 0)
+    // The graph face (iris.face "graph", small only): the first load as a figure over its trace, the second under it.
+    readonly property bool graphed: root.small && String(root.widget.irisOption("face", "orbits")) === "graph"
+    readonly property string leadKey: root.loads.length ? root.loads[0].key : root.resources[0]?.key ?? ""
+    readonly property string sideKey: root.loads.length > 1 ? root.loads[1].key
+        : root.resources.find(entry => entry.key !== root.leadKey)?.key ?? ""
     readonly property real orbitSize: root.medium ? Math.min(root.contentHeight, root.dp(126))
         : Math.round(Math.min(root.loadHeight, root.contentWidth * (root.small ? 0.54 : 0.61)))
 
@@ -43,6 +48,14 @@ IrisWidgetFace {
             : entry.key === "mem" ? Translation.tr("Memory")
             : entry.key === "cpu" ? Translation.tr("Processor")
             : entry.key === "gpu" ? Translation.tr("Graphics") : entry.label
+    }
+    function glyph(key: string): string {
+        return key === "cpu" ? "memory" : key === "mem" ? "memory_alt" : key === "gpu" ? "developer_board"
+            : key === "disk" ? "hard_drive" : "thermostat"
+    }
+    function short(key: string): string {
+        return key === "cpu" ? Translation.tr("CPU") : key === "mem" ? Translation.tr("RAM") : key === "gpu" ? Translation.tr("GPU")
+            : key === "disk" ? Translation.tr("Disk") : root.name({ key: key, label: "" })
     }
     function figure(key: string): string {
         return String(root.widget._getDisplayText(key)).replace(/[%°C]/g, "")
@@ -281,7 +294,7 @@ IrisWidgetFace {
     Item {
         id: composition
         anchors.fill: parent
-        visible: root.resources.length > 0
+        visible: root.resources.length > 0 && !root.graphed
         readonly property real detailsX: root.medium && root.loads.length ? root.orbitSize + root.dp(20) : 0
         readonly property real detailsWidth: width - detailsX
 
@@ -330,6 +343,57 @@ IrisWidgetFace {
             width: composition.detailsWidth
             height: root.diskAlone ? root.dp(80) : root.diskHeight
             y: root.diskAlone ? Math.round((composition.height - height) / 2) : composition.height - height
+        }
+    }
+
+    Column {
+        anchors.fill: parent
+        visible: root.graphed && root.leadKey.length > 0
+        spacing: 0
+
+        FaceHeader {
+            face: root
+            width: parent.width
+            glyph: root.glyph(root.leadKey)
+            text: root.name({ key: root.leadKey, label: "" })
+            tint: root.tint(root.leadKey)
+        }
+        Reading {
+            key: root.leadKey
+            figureSize: 30
+            ink: root.ink
+        }
+        Trace {
+            key: root.leadKey
+            width: parent.width
+            height: Math.max(0, parent.height - y - sideReading.height - root.dp(6))
+        }
+        Item { width: 1; height: root.dp(6) }
+        Row {
+            id: sideReading
+            visible: root.sideKey.length > 0
+            spacing: root.dp(5)
+            FaceText {
+                face: root
+                text: root.short(root.sideKey)
+                color: root.inkSecondary
+                size: 12
+                weight: Font.DemiBold
+                y: Math.round(sideFigure.y + sideFigure.baselineOffset - baselineOffset)
+            }
+            FaceFigure {
+                id: sideFigure
+                face: root
+                text: root.figure(root.sideKey)
+                size: 16
+            }
+            FaceText {
+                face: root
+                text: root.unit(root.sideKey)
+                color: root.inkSecondary
+                size: 9
+                y: Math.round(sideFigure.y + sideFigure.baselineOffset - baselineOffset)
+            }
         }
     }
 }

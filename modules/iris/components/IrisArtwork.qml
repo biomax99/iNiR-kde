@@ -44,7 +44,8 @@ Item {
         maskSource: roundMask
         maskThresholdMin: 0.5
         maskSpreadAtMin: 1
-        visible: cover.status === Image.Ready
+        // A reload (new track, new decode size) keeps the last cover painted until the next one is in.
+        visible: cover.status === Image.Ready || (cover.status === Image.Loading && cover.implicitWidth > 0)
     }
     readonly property bool bare: root.source.length === 0 || cover.status === Image.Error || cover.status === Image.Null
     IconImage {

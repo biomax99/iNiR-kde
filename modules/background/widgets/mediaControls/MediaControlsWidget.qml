@@ -342,6 +342,9 @@ AbstractBackgroundWidget {
     irisSizes: ["small", "medium", "large"]
     irisDefaultSize: "medium"
     irisOptions: [
+        { key: "cover", label: Translation.tr("Large cover"), fallback: "inset", choices: [
+            { label: Translation.tr("Beside"), icon: "art_track", value: "inset" },
+            { label: Translation.tr("Full card"), icon: "imagesmode", value: "full" }] },
         { key: "lyrics", label: Translation.tr("Synced lyrics"), icon: "lyrics", fallback: true },
         { key: "rest", label: Translation.tr("Rest when paused"), icon: "bedtime", fallback: true }
     ]

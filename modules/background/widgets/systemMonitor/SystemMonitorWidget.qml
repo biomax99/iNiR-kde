@@ -53,6 +53,9 @@ AbstractBackgroundWidget {
     irisSizes: ["small", "medium", "large"]
     irisDefaultSize: "medium"
     irisOptions: [
+        { key: "face", label: Translation.tr("Face"), fallback: "orbits", choices: [
+            { label: Translation.tr("Rings"), icon: "donut_large", value: "orbits" },
+            { label: Translation.tr("Graph"), icon: "show_chart", value: "graph" }] },
         { key: "showCpu", raw: true, label: Translation.tr("CPU"), icon: "memory", fallback: true },
         { key: "showMemory", raw: true, label: Translation.tr("Memory"), icon: "storage", fallback: true },
         { key: "showGpu", raw: true, label: Translation.tr("GPU"), icon: "developer_board", fallback: true },

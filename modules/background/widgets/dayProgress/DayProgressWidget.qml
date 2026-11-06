@@ -28,6 +28,11 @@ AbstractBackgroundWidget {
     implicitHeight: root.irisFaced ? root.irisFaceHeight : Math.round(Number(root._readConfigKey("contentHeight") ?? 240) * scaleFactor)
     irisFace: Component { IrisDayFace { widget: root } }
     irisSizes: ["small", "medium"]
+    irisOptions: [
+        { key: "face", label: Translation.tr("Face"), fallback: "ring", choices: [
+            { label: Translation.tr("Day ring"), icon: "donut_large", value: "ring" },
+            { label: Translation.tr("Sun"), icon: "wb_twilight", value: "sun" }] }
+    ]
     resizableAxes: ({ width: "contentWidth", height: "contentHeight" })
     resizeMinWidth: 190
     resizeMinHeight: 190

@@ -88,7 +88,8 @@ AbstractBackgroundWidget {
     irisFace: Component { IrisWeatherFace { widget: root } }
     irisSizes: ["small", "medium", "large"]
     irisOptions: [
-        { key: "showLocation", raw: true, label: Translation.tr("Location"), icon: "location_on", fallback: true }
+        { key: "showLocation", raw: true, label: Translation.tr("Location"), icon: "location_on", fallback: true },
+        { key: "sky", label: Translation.tr("Sky tint"), icon: "gradient", fallback: true }
     ]
     resizableAxes: ({ uniform: "size" })
     resizeMinWidth: root.weatherStyle === "detail" ? 280

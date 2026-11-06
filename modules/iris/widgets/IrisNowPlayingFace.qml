@@ -22,7 +22,10 @@ IrisWidgetFace {
     readonly property string art: root.hasPlayer ? media.displayedArtFilePath : ""
     readonly property color artLight: IrisStyle.vividHighlight(media.colorQuantizer?.colors?.[0] ?? root.accent, root.accent)
     readonly property real progress: media.effectiveLength > 0 ? Math.min(1, media.effectivePosition / media.effectiveLength) : 0
-    readonly property bool lyricsWanted: root.large && root.live && root.hasPlayer
+    // The full cover (iris.cover "full", large only): the art fills the card and the track sits over it.
+    readonly property bool fullCover: root.large && root.art.length > 0
+        && String(root.widget.irisOption("cover", "inset")) === "full"
+    readonly property bool lyricsWanted: root.large && !root.fullCover && root.live && root.hasPlayer
         && Boolean(root.widget.irisOption("lyrics", true))
     readonly property bool lyricsReady: root.lyricsWanted && LyricsService.status === "ok" && LyricsService.lyricsLines.length > 0
     readonly property string source: {
@@ -30,9 +33,9 @@ IrisWidgetFace {
         return identity.length > 0 ? identity.charAt(0).toUpperCase() + identity.slice(1) : Translation.tr("Music")
     }
 
-    light: root.small || root.art.length === 0 ? (root.resting && !root.small ? IrisStyle.identity.pink : "transparent")
+    light: root.fullCover ? "transparent" : root.small || root.art.length === 0 ? (root.resting && !root.small ? IrisStyle.identity.pink : "transparent")
         : root.artLight
-    padding: root.small && root.art.length > 0 ? 0 : root.dp(16)
+    padding: (root.small || root.fullCover) && root.art.length > 0 ? 0 : root.dp(16)
 
     onLyricsWantedChanged: root.lyricsWanted ? LyricsService.subscribe() : LyricsService.unsubscribe()
     Component.onDestruction: if (root.lyricsWanted) LyricsService.unsubscribe()
@@ -55,6 +58,7 @@ IrisWidgetFace {
     component Transport: RowLayout {
         id: transport
         property real disc: root.dp(34)
+        property color playWell: root.accent
         spacing: root.dp(6)
         FaceAction {
             face: root
@@ -70,8 +74,8 @@ IrisWidgetFace {
             implicitWidth: Math.round(transport.disc * 1.2)
             glyph: root.playing ? "pause" : "play_arrow"
             name: root.playing ? Translation.tr("Pause") : Translation.tr("Play")
-            tint: root.playing ? root.onFill(root.accent) : root.ink
-            color: root.playing ? root.accent : root.fill
+            tint: root.playing ? root.onFill(transport.playWell) : root.ink
+            color: root.playing ? transport.playWell : root.fill
             onActivated: media.togglePlaying()
         }
         FaceAction {
@@ -86,6 +90,8 @@ IrisWidgetFace {
     }
 
     component Progress: Rectangle {
+        id: progressBar
+        property color ink: root.ink
         implicitHeight: root.dp(4)
         radius: height / 2
         color: root.fill
@@ -93,7 +99,7 @@ IrisWidgetFace {
             width: parent.width * root.progress
             height: parent.height
             radius: height / 2
-            color: root.ink
+            color: progressBar.ink
         }
     }
 
@@ -285,9 +291,102 @@ IrisWidgetFace {
         }
     }
 
+    Item {
+        anchors.fill: parent
+        visible: !root.resting && root.fullCover
+
+        ClippingRectangle {
+            anchors.fill: parent
+            radius: root.radius
+            color: "transparent"
+            IrisImage {
+                anchors.fill: parent
+                source: root.art
+            }
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                height: parent.height * 0.6
+                gradient: Gradient {
+                    GradientStop { position: 0; color: "transparent" }
+                    GradientStop { position: 0.45; color: ColorUtils.applyAlpha(IrisStyle.veilStrong, IrisStyle.veilStrong.a * 0.7) }
+                    GradientStop { position: 1; color: IrisStyle.veilStrong }
+                }
+            }
+        }
+
+        ColumnLayout {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            anchors.margins: root.dp(16)
+            spacing: root.dp(2)
+
+            FaceText {
+                face: root
+                Layout.fillWidth: true
+                text: root.source
+                color: IrisStyle.onMediaTertiary
+                size: 11
+                weight: Font.DemiBold
+            }
+            FaceText {
+                face: root
+                Layout.fillWidth: true
+                text: media.effectiveTitle
+                color: IrisStyle.onMedia
+                size: 17
+                weight: Font.Bold
+                wrapMode: Text.Wrap
+                maximumLineCount: 2
+            }
+            FaceText {
+                face: root
+                Layout.fillWidth: true
+                text: media.effectiveArtist
+                color: IrisStyle.onMediaSecondary
+                size: 13
+            }
+            Progress {
+                Layout.fillWidth: true
+                Layout.topMargin: root.dp(10)
+                visible: media.effectiveLength > 0
+                color: IrisStyle.onMediaFill
+                ink: IrisStyle.onMedia
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.topMargin: root.dp(6)
+                FaceText {
+                    face: root
+                    text: StringUtils.friendlyTimeForSeconds(media.effectivePosition)
+                    color: IrisStyle.onMediaSecondary
+                    font.family: root.fontNumbers
+                    font.features: ({ "tnum": 1 })
+                    size: 11
+                }
+                Item { Layout.fillWidth: true }
+                Transport {
+                    disc: root.dp(36)
+                    playWell: root.artLight
+                }
+                Item { Layout.fillWidth: true }
+                FaceText {
+                    face: root
+                    text: StringUtils.friendlyTimeForSeconds(media.effectiveLength)
+                    color: IrisStyle.onMediaSecondary
+                    font.family: root.fontNumbers
+                    font.features: ({ "tnum": 1 })
+                    size: 11
+                }
+            }
+        }
+    }
+
     ColumnLayout {
         anchors.fill: parent
-        visible: !root.resting && root.large
+        visible: !root.resting && root.large && !root.fullCover
         spacing: root.dp(12)
 
         RowLayout {

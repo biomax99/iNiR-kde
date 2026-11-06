@@ -34,7 +34,7 @@ IrisWidgetFace {
         return text.replace(/°[CF]$/, "°").replace(/([0-9])$/, "$1°")
     }
 
-    light: root.ready ? root.sky : "transparent"
+    light: root.ready && Boolean(root.widget.irisOption("sky", true)) ? root.sky : "transparent"
 
     component Now: ColumnLayout {
         spacing: 0
