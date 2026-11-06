@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Wayland
 import qs
+import qs.services
 import qs.modules.common
 import qs.modules.iris.frame
 
@@ -16,8 +17,12 @@ Variants {
         readonly property string outputName: screenScope.modelData?.name ?? ""
         readonly property var leftSidebar: Config.options?.iris?.sidebars?.left ?? ({})
         readonly property var rightSidebar: Config.options?.iris?.sidebars?.right ?? ({})
+        // A maximized window takes the Island's room when the Island hides over it (iris.bar.hideOverMaximized).
+        readonly property bool yieldsToMaximized: (Config.options?.iris?.bar?.hideOverMaximized ?? false)
+            && CompositorService.isKWin && NiriService.hasMaximizedOnOutput(screenScope.outputName)
         readonly property bool chassisPresent: {
             if (!GlobalStates.barOpen || !(Config.options?.enabledPanels ?? []).includes("irisBar")) return false
+            if (screenScope.yieldsToMaximized) return false
             const list = Config.options?.iris?.bar?.screenList ?? []
             if (!list || list.length === 0) return true
             const matched = Quickshell.screens.filter(screen => list.includes(screen?.name ?? ""))

@@ -342,9 +342,26 @@ Item {
         next[root.screenName] = value
         GlobalStates.irisAbsorbed = next
     }
+    // The Island's edge hides with the Island (auto-hide, a maximized window): the pieces on it slide off by the same
+    // distance, and once it is gone so are they, leaving no fuse on the frame.
+    property real tuck: 0
+    property bool tucked: false
+    function onTuckedEdge(zone: string): bool {
+        return root.islandSideName.length > 0 && IrisFrame.edgeOf(zone) === root.islandSideName
+    }
+    function tuckedSlot(slot: string): bool {
+        return root.onTuckedEdge(root.isTrayApp(slot) && root.trayGrouped ? root.trayPlace : root.placeName(slot))
+    }
     readonly property var restPoints: {
         const out = {}
-        for (const slot of root.allSlots) out[slot] = root.rawPlaceOf(slot)
+        const t = root.tuck
+        const side = root.islandSideName
+        for (const slot of root.allSlots) {
+            const at = root.rawPlaceOf(slot)
+            out[slot] = t > 0 && root.tuckedSlot(slot)
+                ? Qt.point(at.x + (side === "left" ? -t : side === "right" ? t : 0), at.y + (side === "top" ? -t : side === "bottom" ? t : 0))
+                : at
+        }
         return out
     }
     function placeOf(slot: string): point { return root.restPoints[slot] ?? root.rawPlaceOf(slot) }
@@ -408,7 +425,7 @@ Item {
         const out = []
         for (const slot of root.allSlots) {
             const floating = root.placeName(slot) !== "island" && root.kindOf(slot).length > 0
-            if (!floating) { out.push(null); continue }
+            if (!floating || (root.tucked && root.tuckedSlot(slot))) { out.push(null); continue }
             const centre = root.placeOf(slot)
             out.push({ x: Math.round(centre.x - root.size / 2), y: Math.round(centre.y - root.size / 2), size: root.size })
         }
@@ -419,7 +436,7 @@ Item {
         if (!root.barred) return out
         for (const zone of root.zones) {
             const line = root.lineOf(zone.zone)
-            if (line.length < 2) continue
+            if (line.length < 2 || (root.tucked && root.onTuckedEdge(zone.zone))) continue
             const first = root.placeOf(line[0])
             const last = root.placeOf(line[line.length - 1])
             const along = root.size / 2 + root.barPad
@@ -437,7 +454,8 @@ Item {
                 stacks: root.stacks(zone.zone)
             })
         }
-        if (root.trayGrouped && root.trayAppSlots.length > 1 && root.drag?.slot !== root.trayOwner) {
+        if (root.trayGrouped && root.trayAppSlots.length > 1 && root.drag?.slot !== root.trayOwner
+                && !(root.tucked && root.onTuckedEdge(root.trayPlace))) {
             const first = root.placeOf(root.trayAppSlots[0])
             const last = root.placeOf(root.trayAppSlots[root.trayAppSlots.length - 1])
             const along = root.size / 2 + root.barPad

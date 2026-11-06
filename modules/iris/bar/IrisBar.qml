@@ -705,7 +705,11 @@ Scope {
                 readonly property bool suppressed: islandLoader.active
                     ? (islandLoader.item?.suppressed ?? false) : false
 
-                readonly property bool islandAutoHide: IrisFrame.islandAutoHide && islandLoader.active
+                // A maximized window on this output takes the Island's row (IrisReservations gives it the room): the
+                // Island and the pieces on its edge hide over it and come back with the pointer against the edge.
+                readonly property bool islandOverMaximized: (root.options?.hideOverMaximized ?? false) && CompositorService.isKWin
+                    && !windowLoader.loadedVertical && NiriService.hasMaximizedOnOutput(barWindow.screen?.name ?? "")
+                readonly property bool islandAutoHide: (IrisFrame.islandAutoHide || barWindow.islandOverMaximized) && islandLoader.active
                 readonly property bool islandWorkspaceEmpty: {
                     if (!(root.options?.revealOnEmpty ?? true) || !CompositorService.hasNiriModel) return false
                     const active = (NiriService.allWorkspaces ?? []).find(ws => ws.output === barWindow.screen?.name && ws.is_active)
@@ -725,7 +729,11 @@ Scope {
                     && [islandInput, menuStartInput, menuEndInput].some(area =>
                         canvasHover.point.position.x >= area.x && canvasHover.point.position.x < area.x + area.width
                         && canvasHover.point.position.y >= area.y && canvasHover.point.position.y < area.y + area.height)
-                readonly property bool pointerNearIsland: islandEdgeHover.hovered || barWindow.pointerOnIslandBody
+                // Over a maximized window the row is one menu bar: anywhere on it, its pieces included, keeps it out.
+                readonly property bool pointerOnIslandRow: barWindow.islandOverMaximized && canvasHover.hovered
+                    && (windowLoader.loadedBottom ? canvasHover.point.position.y >= barWindow.height - IrisFrame.clear(IrisFrame.islandEdge)
+                        : canvasHover.point.position.y <= IrisFrame.clear(IrisFrame.islandEdge))
+                readonly property bool pointerNearIsland: islandEdgeHover.hovered || barWindow.pointerOnIslandBody || barWindow.pointerOnIslandRow
                 onPointerNearIslandChanged: {
                     if (barWindow.pointerNearIsland) {
                         islandHideDelay.stop()
@@ -933,12 +941,15 @@ Scope {
                     readonly property bool armed: barWindow.islandAutoHide
                     readonly property real depth: Math.max(2, IrisFrame.band + 2)
                     readonly property real slack: Math.round(40 * IrisStyle.density)
-                    readonly property real span: (windowLoader.loadedVertical ? islandLoader.height : islandLoader.width) + 2 * islandEdgeStrip.slack
+                    // Over a maximized window the whole edge is the menu bar's: the pointer against it anywhere.
+                    readonly property bool wholeEdge: barWindow.islandOverMaximized
+                    readonly property real span: islandEdgeStrip.wholeEdge ? barWindow.width
+                        : (windowLoader.loadedVertical ? islandLoader.height : islandLoader.width) + 2 * islandEdgeStrip.slack
                     width: windowLoader.loadedVertical ? islandEdgeStrip.depth : islandEdgeStrip.span
                     height: windowLoader.loadedVertical ? islandEdgeStrip.span : islandEdgeStrip.depth
                     x: windowLoader.loadedVertical
                         ? (windowLoader.loadedEdge === "right" ? barWindow.width - islandEdgeStrip.depth : 0)
-                        : Math.round(islandLoader.x - islandEdgeStrip.slack)
+                        : islandEdgeStrip.wholeEdge ? 0 : Math.round(islandLoader.x - islandEdgeStrip.slack)
                     y: windowLoader.loadedVertical ? Math.round(islandLoader.y - islandEdgeStrip.slack)
                         : (windowLoader.loadedBottom ? barWindow.height - islandEdgeStrip.depth : 0)
                     HoverHandler { id: islandEdgeHover }
@@ -1163,6 +1174,8 @@ Scope {
                     anchors.fill: parent
                     modelData: barWindow.screen
                     suppressed: barWindow.canvasSuppressed
+                    tuck: islandLoader.active ? islandLoader.tuck : 0
+                    tucked: islandLoader.active && barWindow.islandTucked
                 }
 
                 Loader {

@@ -2608,6 +2608,7 @@
             "pieces": [],
             "hoverExpand": true,
             "hoverDelay": 300,
+            "hideOverMaximized": false,
             "externalDashboard": [],
             "pageWidth": 440,
             "navItems": [

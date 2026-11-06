@@ -141,6 +141,8 @@ QtObject {
     // An announcement is never switched on: like Material's bar indicator it shows whenever its state is there.
     readonly property var announcements: ["shellUpdate"]
     property var availableExtras: null
+    // Island slots that hold something on some output (an idle Activity bubble is not there); IrisPieces feeds it.
+    property var availableSlots: null
     function extraOn(extras: var, id: string): bool {
         return root.announcements.includes(id) || Boolean(extras?.[id]?.enable ?? false)
     }
@@ -158,7 +160,8 @@ QtObject {
             const edge = root.edgeOf(String(place ?? ""))
             if (edge.length > 0 && !edges.includes(edge)) edges.push(edge)
         }
-        for (const id of ["left", "right", "utility"]) note(o?.[id]?.place ?? "island")
+        for (const id of ["left", "right", "utility"])
+            if (root.availableSlots === null || root.availableSlots.includes(id)) note(o?.[id]?.place ?? "island")
         const extras = o?.extras ?? ({})
         // A piece that has nothing to show (no update, no player, an empty tray) is not on its edge: the edge
         // reserves nothing for it. IrisPieces feeds availableExtras (it imports this singleton, not the other way).

@@ -4189,6 +4189,9 @@ Singleton {
                     property int margin: 8
                     property bool autoHide: false // Rest the pointer at the Island's edge to bring it back
                     property bool revealOnEmpty: true // Keep the Island visible on an empty workspace while auto-hide is on
+                    // Hide the Island, and the pieces on its edge, while a maximized window is on the output (KWin), and give
+                    // that window their room; the pointer against the edge brings them back over it, as a menu bar does.
+                    property bool hideOverMaximized: false
                     property bool reserveSpace: true
                     property list<string> screenList: []
                     property list<string> leftModules: []

@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.SystemTray
+import qs
 import qs.services
 import qs.services.deferred
 import qs.modules.common
@@ -58,6 +59,12 @@ QtObject {
     readonly property var extraIds: root.extras.map(piece => piece.id)
     readonly property var availableExtras: root.extraIds.filter(id => root.available(id))
     readonly property Binding frameFeed: Binding { target: IrisFrame; property: "availableExtras"; value: root.availableExtras }
+    // What each output's Island puts in its slots (IrisIsland.bubbleKinds): a slot empty on every output reserves no edge.
+    readonly property var availableSlots: {
+        const kinds = GlobalStates.irisBubbleKinds ?? {}
+        return root.slotIds.filter(id => Object.keys(kinds).some(screen => String(kinds[screen]?.[id] ?? "").length > 0))
+    }
+    readonly property Binding slotFeed: Binding { target: IrisFrame; property: "availableSlots"; value: root.availableSlots }
     readonly property var cardIds: root.extras.filter(piece => piece.card).map(piece => piece.id)
     readonly property string defaultPlace: "right"
     function labelOf(id: string): string {
