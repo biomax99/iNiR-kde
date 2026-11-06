@@ -34,7 +34,10 @@ Item {
     readonly property real sideGap: IrisFrame.safeClear(root.islandEdge) + Math.round(12 * root.d)
     // Across a top or bottom Island: out of the Island in the middle, or in a corner beside it.
     readonly property string across: root.islandSide ? "center" : String(root.options?.position ?? "center")
-    readonly property real cornerGap: IrisFrame.band + Math.round(12 * root.d)
+    // In a corner of a framed screen they hang from the frame, melted into its side like the pieces: the newest
+    // also melts into the plate above it, the rest only into the frame, so they never run into one another.
+    readonly property bool edgeHung: root.across !== "center" && IrisFrame.framed
+    readonly property real cornerGap: IrisFrame.band + (root.edgeHung ? 0 : Math.round(12 * root.d))
     readonly property var popups: (Notifications.popupList ?? []).slice(-3).reverse()
     readonly property real d: IrisStyle.density
     readonly property real edgeOffset: (Number(root.barOptions?.height ?? 42)
@@ -100,7 +103,8 @@ Item {
         verticalLayoutDirection: root.barTop ? ListView.TopToBottom : ListView.BottomToTop
         width: Math.min(root.popupWidth - 16, parent.width - 16)
         height: Math.max(1, popupColumn.contentHeight)
-        spacing: 8 * root.d
+        // Hung from the frame, each banner's fillets reach past its ends: room so two never meet in a cusp.
+        spacing: (root.edgeHung ? 16 : 8) * root.d
         interactive: false
         model: ScriptModel {
             objectProp: "notificationId"
@@ -128,6 +132,7 @@ Item {
         Item {
             id: banner
             required property var modelData
+            required property int index
             readonly property var notification: banner.modelData
             readonly property var actions: (banner.notification?.actions ?? []).filter(action => action.identifier !== "default")
             readonly property bool critical: String(banner.notification?.urgency ?? "") === "critical"
@@ -200,7 +205,8 @@ Item {
                 const h = plate.height * banner.fade
                 return { x: at.x + (plate.width - w) / 2, y: at.y + (plate.height - h) / 2, width: w, height: h,
                     radius: Math.min(h / 2, plate.radius), paints: false, id: "banner:" + banner.bodyKey,
-                    joins: banner.meltsIntoIsland ? "island" : "", fuse: IrisStyle.fuseDeep * (1 - banner.bloom) }
+                    joins: banner.meltsIntoIsland ? "island" : !root.edgeHung ? "" : banner.index === 0 ? "frame" : ["frame", ""],
+                    fuse: root.edgeHung ? IrisFrame.meltFuse(root.across, root.bubbleSize) : IrisStyle.fuseDeep * (1 - banner.bloom) }
             }
             onBodyChanged: if (banner.bodyKey) root.publish(banner.bodyKey, banner.body)
             Component.onDestruction: if (banner.bodyKey) root.publish(banner.bodyKey, null)
@@ -209,9 +215,11 @@ Item {
                 width: Math.round(root.bubbleSize + (banner.width - root.bubbleSize) * banner.bloom)
                 height: Math.round(root.bubbleSize + (banner.fullHeight - root.bubbleSize) * banner.bloom)
                 clip: true
-                x: Math.round((banner.width - width) / 2 + banner.swipe)
+                // Hung from the frame it grows out of the side it melts into.
+                x: Math.round((!root.edgeHung ? (banner.width - width) / 2 : root.across === "right" ? banner.width - width : 0) + banner.swipe)
                 readonly property real islandLift: {
                     void (banner.y + popupColumn.y + popupColumn.contentY + popupColumn.height)
+                    if (root.edgeHung) return 0
                     if (!banner.meltsIntoIsland) return root.barTop ? -18 * root.d : 18 * root.d
                     const at = banner.mapToItem(root, 0, 0)
                     return (root.island.y + root.island.height / 2) - (at.y + root.bubbleSize / 2)
