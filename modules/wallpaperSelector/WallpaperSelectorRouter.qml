@@ -266,6 +266,23 @@ Scope {
         function close(): void { GlobalStates.coverflowSelectorOpen = false }
     }
 
+    // KWin: the shortcuts wallpaperSelector.kwinShortcuts names open the selector on the output under the pointer.
+    Connections {
+        target: NiriService
+        enabled: CompositorService.isKWin
+        function onKwinShortcutPressed(component: string, action: string): void {
+            const name = component + "/" + action
+            if ((Config.options?.wallpaperSelector?.kwinRandomShortcuts ?? []).includes(name)) {
+                Wallpapers.randomFromCurrentFolder()
+                return
+            }
+            if (!(Config.options?.wallpaperSelector?.kwinShortcuts ?? []).includes(name)) return
+            if (!GlobalStates.wallpaperSelectorOpen && root.focusedMonitorName.length > 0)
+                GlobalStates.wallpaperSelectorTargetMonitor = root.focusedMonitorName
+            root.toggle()
+        }
+    }
+
     Loader {
         active: CompositorService.isHyprland
         sourceComponent: Item {

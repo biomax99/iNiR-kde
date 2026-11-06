@@ -3777,6 +3777,10 @@ Singleton {
                 property string targetMonitor: ""
                 property string style: "grid" // "grid" | "coverflow" | "launcher"
                 property string coverflowView: "gallery" // "gallery" | "skew"
+                // KWin: global shortcuts ("component/action") that toggle the selector on the output under the pointer,
+                // or pick a random wallpaper. Followed as kglobalaccel announces them, never registered.
+                property list<string> kwinShortcuts: []
+                property list<string> kwinRandomShortcuts: []
             }
 
             property JsonObject screenRecord: JsonObject {

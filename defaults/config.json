@@ -2214,7 +2214,9 @@
         "coverflowView": "gallery",
         "targetMonitor": "",
         "useSystemFileDialog": false,
-        "animatePreview": false
+        "animatePreview": false,
+        "kwinShortcuts": [],
+        "kwinRandomShortcuts": []
     },
     "screenRecord": {
         "recordingOsd": {
