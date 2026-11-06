@@ -258,6 +258,9 @@ workspace.windowRemoved.connect(function (w) {
     changed();
 });
 workspace.windowActivated.connect(changed);
+// The window in front (kwin_stack) decides whether an output yields its top row to a maximized window;
+// activation alone is sent before KWin raises the window.
+if (workspace.stackingOrderChanged) workspace.stackingOrderChanged.connect(changed);
 workspace.currentDesktopChanged.connect(changed);
 workspace.desktopsChanged.connect(changed);
 workspace.screensChanged.connect(changed);

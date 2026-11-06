@@ -49,6 +49,7 @@ LAYOUTS_PATH = "/Layouts"
 LAYOUTS_INTERFACE = "org.kde.KeyboardLayouts"
 # KWin's callDBus waits 25 s for a reply; answer an idle Next before that.
 POLL_HEARTBEAT_S = 20
+SNAPSHOT_TIMEOUT_S = 5
 
 INTROSPECTION = """
 <node>
@@ -213,10 +214,10 @@ class Bridge:
         if script_id < 0:
             raise RuntimeError("KWin refused to load " + SCRIPT_PATH)
         self.script_loaded = True
-        try:
-            self.call("org.kde.KWin", "/Scripting/Script%d" % script_id, "org.kde.kwin.Script", "run")
-        except GLib.Error:
-            self.scripting("start")
+        # Not /Scripting/Script<id>.run: KWin numbers a new script by how many are loaded, so once an earlier one was
+        # unloaded the id can name another script's object and that one runs instead. start() runs every loaded
+        # script that is not running yet, ours included.
+        self.scripting("start")
 
     def unload_script(self):
         if not self.script_loaded:
@@ -586,9 +587,8 @@ class Bridge:
             self.refresh_kwin_owner()
             for signum in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
                 signal_add(GLib.PRIORITY_HIGH, signum, lambda *_: (self.quit(0), GLib.SOURCE_REMOVE)[1])
-            if self.selftest:
-                GLib.timeout_add_seconds(5, self.on_selftest_timeout)
-            else:
+            GLib.timeout_add_seconds(SNAPSHOT_TIMEOUT_S, self.on_snapshot_timeout)
+            if not self.selftest:
                 GLib.io_add_watch(0, GLib.PRIORITY_DEFAULT, GLib.IO_IN | GLib.IO_HUP | GLib.IO_ERR, self.on_stdin)
             self.load_script()
             self.loop.run()
@@ -599,9 +599,11 @@ class Bridge:
             self.cleanup()
         return self.exit_code
 
-    def on_selftest_timeout(self):
-        log("no snapshot from KWin within 5 s")
-        self.quit(1)
+    # A script that never runs leaves the shell without windows; exiting lets NiriService start the bridge again.
+    def on_snapshot_timeout(self):
+        if not self.ready:
+            log("no snapshot from KWin within %d s" % SNAPSHOT_TIMEOUT_S)
+            self.quit(1)
         return GLib.SOURCE_REMOVE
 
 
