@@ -51,6 +51,8 @@ Singleton {
 
     property int currentKeyboardLayoutIndex: 0
     property var keyboardLayoutNames: []
+    // The xkb code of each layout, when the compositor names them (KWin does, in the session's language); Niri leaves it to base.lst.
+    property var keyboardLayoutCodes: []
     readonly property bool hasMultipleKeyboardLayouts: keyboardLayoutNames.length > 1
     // Tracks which workspaces have their single window auto-maximized
     property var _autoMaximizedWs: ({})
@@ -107,6 +109,9 @@ Singleton {
     property bool kwinBridgeReady: false
     // A KWin global shortcut was pressed (any component's, as kglobalaccel announces it).
     signal kwinShortcutPressed(string component, string action)
+    // The session asked Plasma's on-screen display for a level or a line of text (the bridge answers it while Plasma's
+    // shell is away): { kind: "volume" | "mic" | "brightness", percent } or { kind: "text", icon, text }.
+    signal kwinOsdRequested(var request)
     property int _kwinRestartDelayMs: 1000
     readonly property var _kwinActions: ["FocusWorkspace", "FocusWorkspaceUp", "FocusWorkspaceDown",
         "FocusWindow", "CloseWindow", "MoveWindowToWorkspace", "ToggleOverview", "OpenOverview"]
@@ -167,6 +172,10 @@ Singleton {
         }
         if (event.KWinShortcut !== undefined) {
             root.kwinShortcutPressed(String(event.KWinShortcut.component ?? ""), String(event.KWinShortcut.action ?? ""))
+            return
+        }
+        if (event.KWinOsd !== undefined) {
+            root.kwinOsdRequested(event.KWinOsd)
             return
         }
         handleNiriEvent(event)
@@ -854,6 +863,7 @@ Singleton {
         const names = Array.isArray(layouts?.names) ? layouts.names : []
         const index = Number(layouts?.current_idx ?? 0)
 
+        keyboardLayoutCodes = Array.isArray(layouts?.codes) ? layouts.codes : []
         keyboardLayoutNames = names
         currentKeyboardLayoutIndex = isNaN(index) ? 0 : index
     }
@@ -1097,6 +1107,18 @@ Singleton {
         }
         // Fallback to the first workspace index if nothing is focused.
         return 1
+    }
+
+    // The window in front on the workspace this output shows is maximized (KWin, which says which is in front;
+    // Niri has no maximized state of its own). One maximized behind tiled windows leaves the output as it is.
+    function hasMaximizedOnOutput(outputName: string): bool {
+        let front = null
+        for (const w of (root.windows ?? [])) {
+            const ws = root.workspaces?.[w.workspace_id]
+            if (w.is_minimized || ws?.output !== outputName || !(ws?.is_active ?? false)) continue
+            if (!front || Number(w.kwin_stack ?? -1) > Number(front.kwin_stack ?? -1)) front = w
+        }
+        return front?.is_maximized === true
     }
 
     function getCurrentKeyboardLayoutName() {

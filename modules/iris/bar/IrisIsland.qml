@@ -434,6 +434,15 @@ Item {
         }
     }
     property var badge: ({ icon: "", tint: IrisStyle.text, text: "" })
+    // Plasma's OSD names its icons the freedesktop way.
+    function osdGlyph(icon: string): string {
+        if (icon.includes("muted")) return icon.startsWith("microphone") ? "mic_off" : "volume_off"
+        if (icon.startsWith("audio-volume")) return "volume_up"
+        if (icon.startsWith("microphone")) return "mic"
+        if (icon.startsWith("power-profile")) return icon.includes("performance") ? "speed" : icon.includes("saver") ? "eco" : "balance"
+        if (icon.includes("touchpad")) return "touchpad_mouse"
+        return "info"
+    }
     function showBadge(icon: string, tint: color, text: string): void {
         if (!root.eventsEnabled || !eventsWarm.ready || root.fullscreenCovered
             || root.targetScreen?.name !== GlobalStates.focusedScreen?.name) return
@@ -1105,6 +1114,9 @@ Item {
         function onOsdVolumeOpenChanged(): void { if (GlobalStates.osdVolumeOpen) root.showFeedback("volume", true) }
         function onOsdBrightnessOpenChanged(): void { if (GlobalStates.osdBrightnessOpen) root.showFeedback("brightness", true) }
         function onOsdMicOpenChanged(): void { if (GlobalStates.osdMicOpen) root.showFeedback("mic", true) }
+        function onOsdTextRequested(icon: string, text: string): void {
+            if (text.length > 0) root.showEvent(root.osdGlyph(icon), IrisStyle.accent, text, "", -1)
+        }
         function onOsdKeyboardLayoutOpenChanged(): void {
             if (!GlobalStates.osdKeyboardLayoutOpen || !root.osdKeyboard) return
             root.showBadge("language", IrisStyle.accent,

@@ -90,6 +90,7 @@ function snapshot() {
             output: w.output ? String(w.output.name) : "",
             minimized: !!w.minimized,
             fullScreen: !!w.fullScreen,
+            maximized: w.maximizeMode === 3,
             width: Math.round(w.frameGeometry.width),
             height: Math.round(w.frameGeometry.height),
             stack: stack[uuid] !== undefined ? stack[uuid] : -1
@@ -242,6 +243,7 @@ function watch(w) {
     w.outputChanged.connect(changed);
     w.minimizedChanged.connect(changed);
     w.fullScreenChanged.connect(changed);
+    if (w.maximizedChanged) w.maximizedChanged.connect(changed);
     if (w.skipTaskbarChanged) w.skipTaskbarChanged.connect(changed);
 }
 

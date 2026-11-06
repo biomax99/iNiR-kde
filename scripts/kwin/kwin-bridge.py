@@ -13,6 +13,12 @@ for its own lifetime and translates between the two sides:
 - Global shortcut presses KWin's kglobalaccel announces on the bus leave as
   {"KWinShortcut": {"component": ..., "action": ...}}: the shell can follow a
   shortcut the session already has without registering one of its own.
+- KWin's keyboard layouts (org.kde.keyboard) leave as Niri's
+  KeyboardLayoutsChanged / KeyboardLayoutSwitched, with the xkb codes added.
+- While Plasma's shell is not running, it answers Plasma's on-screen display
+  service (org.kde.plasmashell /org/kde/osdService) in its place: the volume,
+  microphone and brightness levels the session's own shortcuts change leave as
+  {"KWinOsd": {"kind": ..., ...}}, so the shell shows them as Plasma would.
 
 Run with --selftest to load the script, print one snapshot summary and exit.
 """
@@ -35,6 +41,12 @@ BUS_NAME = "org.inir.KWinBridge"
 OBJECT_PATH = "/org/inir/KWinBridge"
 PLUGIN_NAME = "inir-kwin-bridge"
 SCRIPT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "inir-bridge.js")
+OSD_NAME = "org.kde.plasmashell"
+OSD_PATH = "/org/kde/osdService"
+OSD_INTERFACE = "org.kde.osdService"
+LAYOUTS_NAME = "org.kde.keyboard"
+LAYOUTS_PATH = "/Layouts"
+LAYOUTS_INTERFACE = "org.kde.KeyboardLayouts"
 # KWin's callDBus waits 25 s for a reply; answer an idle Next before that.
 POLL_HEARTBEAT_S = 20
 
@@ -59,6 +71,10 @@ class Bridge:
         self.conn = Gio.bus_get_sync(Gio.BusType.SESSION, None)
         self.registration = 0
         self.shortcut_watch = 0
+        self.layout_watch = 0
+        self.osd_owner = 0
+        self.osd_filter = 0
+        self.owns_osd = False
         self.owns_name = False
         self.script_loaded = False
         self.kwin_owner = ""
@@ -110,6 +126,75 @@ class Bridge:
         component, action = params.unpack()[:2]
         if self.ready:
             self.emit({"KWinShortcut": {"component": component, "action": action}})
+
+    # ---- Keyboard layouts ------------------------------------------------------
+
+    def watch_layouts(self):
+        self.layout_watch = self.conn.signal_subscribe(
+            None, LAYOUTS_INTERFACE, None, LAYOUTS_PATH, None, Gio.DBusSignalFlags.NONE, self.on_layouts)
+
+    def on_layouts(self, _conn, _sender, _path, _interface, signal_name, params):
+        if signal_name == "layoutChanged":
+            self.emit_if_changed("KeyboardLayoutSwitched", {"idx": int(params.unpack()[0])})
+        elif signal_name == "layoutListChanged":
+            self.emit_layouts()
+
+    def emit_layouts(self):
+        try:
+            layouts = self.call(LAYOUTS_NAME, LAYOUTS_PATH, LAYOUTS_INTERFACE, "getLayoutsList", None,
+                                "(a(sss))").unpack()[0]
+            current = self.call(LAYOUTS_NAME, LAYOUTS_PATH, LAYOUTS_INTERFACE, "getLayout", None, "(u)").unpack()[0]
+        except GLib.Error:
+            return
+        self.emit_if_changed("KeyboardLayoutsChanged", {"keyboard_layouts": {
+            "names": [name for _short, _variant, name in layouts],
+            # What Niri leaves to xkb's base.lst: KWin names layouts in the session's language.
+            "codes": [variant + short if variant else short for short, variant, _name in layouts],
+            "current_idx": int(current),
+        }})
+        self.emit_if_changed("KeyboardLayoutSwitched", {"idx": int(current)})
+
+    # ---- Plasma's on-screen display, while its shell is away ------------------
+
+    def own_osd(self):
+        # Never queued behind Plasma's shell, and handed back the moment it asks.
+        flags = Gio.BusNameOwnerFlags.ALLOW_REPLACEMENT | Gio.BusNameOwnerFlags.DO_NOT_QUEUE
+        self.osd_owner = Gio.bus_own_name_on_connection(self.conn, OSD_NAME, flags, self.on_osd_acquired, self.on_osd_lost)
+
+    def on_osd_acquired(self, _conn, _name):
+        self.owns_osd = True
+        if not self.osd_filter:
+            self.osd_filter = self.conn.add_filter(self.on_osd_message)
+
+    def on_osd_lost(self, _conn, _name):
+        self.owns_osd = False
+
+    def on_osd_message(self, conn, message, incoming):
+        # GDBus runs filters on its worker thread: answer here, hand the rest to the main loop.
+        if (not incoming or not self.owns_osd or message.get_message_type() != Gio.DBusMessageType.METHOD_CALL
+                or message.get_path() != OSD_PATH or message.get_interface() not in (OSD_INTERFACE, None)):
+            return message
+        body = message.get_body()
+        args = list(body.unpack()) if body is not None else []
+        if not message.get_flags() & Gio.DBusMessageFlags.NO_REPLY_EXPECTED:
+            conn.send_message(message.new_method_reply(), Gio.DBusSendMessageFlags.NONE)
+        GLib.idle_add(self.on_osd, message.get_member(), args)
+        return None
+
+    def on_osd(self, method, args):
+        number = lambda: int(args[0]) if args and isinstance(args[0], (int, float)) else -1
+        if method == "volumeChanged":
+            self.emit({"KWinOsd": {"kind": "volume", "percent": number()}})
+        elif method == "microphoneVolumeChanged":
+            self.emit({"KWinOsd": {"kind": "mic", "percent": number()}})
+        elif method == "brightnessChanged":
+            self.emit({"KWinOsd": {"kind": "brightness", "percent": number()}})
+        elif method == "showText" and len(args) >= 2:
+            self.emit({"KWinOsd": {"kind": "text", "icon": str(args[0]), "text": str(args[1])}})
+        elif method == "powerProfileChanged" and args:
+            self.emit({"KWinOsd": {"kind": "text", "icon": "power-profile-" + str(args[0]), "text": str(args[0])}})
+        # kbdLayoutChanged needs nothing: the layout itself arrives as KeyboardLayoutSwitched.
+        return GLib.SOURCE_REMOVE
 
     def refresh_kwin_owner(self):
         try:
@@ -314,6 +399,7 @@ class Bridge:
                 self.quit(0)
                 return
             self.emit({"KWinReady": True})
+            self.emit_layouts()
         self.translate_state(state)
 
     def translate_state(self, state):
@@ -369,10 +455,12 @@ class Bridge:
                 "is_urgent": False,
                 "is_minimized": bool(window.get("minimized")),
                 "is_fullscreen": bool(window.get("fullScreen")),
+                "is_maximized": bool(window.get("maximized")),
                 "layout": None,
                 # KWin's own handle and size: what a window stream and its thumbnail need.
                 "kwin_uuid": uuid,
                 "kwin_size": [window.get("width", 0), window.get("height", 0)],
+                "kwin_stack": window.get("stack", -1),
                 "focus_timestamp": {"secs": stamp // 1_000_000_000, "nanos": stamp % 1_000_000_000},
             })
         niri_windows.sort(key=lambda w: w["id"])
@@ -464,6 +552,16 @@ class Bridge:
         if self.shortcut_watch:
             self.conn.signal_unsubscribe(self.shortcut_watch)
             self.shortcut_watch = 0
+        if self.layout_watch:
+            self.conn.signal_unsubscribe(self.layout_watch)
+            self.layout_watch = 0
+        if self.osd_owner:
+            self.owns_osd = False
+            Gio.bus_unown_name(self.osd_owner)
+            self.osd_owner = 0
+        if self.osd_filter:
+            self.conn.remove_filter(self.osd_filter)
+            self.osd_filter = 0
         if self.registration:
             self.conn.unregister_object(self.registration)
             self.registration = 0
@@ -482,6 +580,9 @@ class Bridge:
         try:
             self.register()
             self.watch_shortcuts()
+            self.watch_layouts()
+            if not self.selftest:
+                self.own_osd()
             self.refresh_kwin_owner()
             for signum in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
                 signal_add(GLib.PRIORITY_HIGH, signum, lambda *_: (self.quit(0), GLib.SOURCE_REMOVE)[1])

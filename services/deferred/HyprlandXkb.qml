@@ -24,8 +24,9 @@ Singleton {
     // Update the layout code according to the layout name (Hyprland gives the name not the code)
     onCurrentLayoutNameChanged: {
         root.updateLayoutCode();
-        // The on-screen keyboard labels its keys from the full xkb description ("Spanish (Latin American)")
-        if (root.currentLayoutName.length > 0 && Config.options?.osk?.layout !== root.currentLayoutName)
+        // The on-screen keyboard labels its keys from the full xkb description ("Spanish (Latin American)");
+        // KWin's names are in the session's language, which it would not find.
+        if (root.currentLayoutName.length > 0 && !CompositorService.isKWin && Config.options?.osk?.layout !== root.currentLayoutName)
             Config.setNestedValue(["osk", "layout"], root.currentLayoutName);
     }
     function updateLayoutCode() {
@@ -37,9 +38,12 @@ Singleton {
     }
 
     function syncFromNiri() {
-        if (!CompositorService.isNiri || typeof NiriService === "undefined")
+        if (!CompositorService.hasNiriModel || typeof NiriService === "undefined")
             return;
         const names = NiriService.keyboardLayoutNames || [];
+        const codes = NiriService.keyboardLayoutCodes || [];
+        // Names base.lst cannot know (KWin's, in the session's language) come with their codes.
+        names.forEach((name, i) => { if (codes[i]) root.cachedLayoutCodes[name] = codes[i]; });
         root.layoutCodes = names;
         root.currentLayoutName = NiriService.getCurrentKeyboardLayoutName();
     }
@@ -135,13 +139,13 @@ Singleton {
 
     Connections {
         target: NiriService
-        enabled: CompositorService.isNiri
+        enabled: CompositorService.hasNiriModel
         function onKeyboardLayoutNamesChanged() { root.syncFromNiri(); }
         function onCurrentKeyboardLayoutIndexChanged() { root.syncFromNiri(); }
     }
 
     Component.onCompleted: {
-        if (CompositorService.isNiri)
+        if (CompositorService.hasNiriModel)
             root.syncFromNiri();
     }
 }

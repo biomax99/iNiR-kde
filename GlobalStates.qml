@@ -81,6 +81,20 @@ Singleton {
     }
 
     property bool osdKeyboardLayoutOpen: false
+    // A line Plasma's OSD would show (a power profile, "no output device"), from the KWin bridge: icon is a freedesktop name.
+    signal osdTextRequested(string icon, string text)
+    // While Plasma's shell is away, the levels the session's own shortcuts change reach its OSD through the KWin bridge.
+    // Lowered first, so a second press while the level is still up holds it there again.
+    Connections {
+        target: NiriService
+        function onKwinOsdRequested(request: var): void {
+            const kind = String(request?.kind ?? "")
+            if (kind === "volume") { root.osdVolumeOpen = false; root.osdVolumeOpen = true }
+            else if (kind === "mic") { root.osdMicOpen = false; root.osdMicOpen = true }
+            else if (kind === "brightness") { root.osdBrightnessOpen = false; root.osdBrightnessOpen = true }
+            else if (kind === "text") root.osdTextRequested(String(request.icon ?? ""), String(request.text ?? ""))
+        }
+    }
     property bool osdConnectionOpen: false
     property bool oskOpen: false
     property bool overlayOpen: false
